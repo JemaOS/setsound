@@ -386,7 +386,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
     >
       {/* Header with Undo/Redo */}
       <div className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-6 md:mb-8 gap-3">
-        <div className="text-center sm:text-left flex-1 w-full sm:w-auto">
+        <div className="text-center flex-1 w-full sm:w-auto">
           <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">Découpeur Audio</h1>
           <p className="text-xs sm:text-sm text-neutral-400">Éditez avec précision • Ctrl+Z pour annuler</p>
         </div>
