@@ -55,7 +55,7 @@ function App() {
       />
       
       {/* Overlay for mobile when sidebar is open */}
-      {sidebarOpen && window.innerWidth < 769 && (
+      {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-30 md:hidden"
           onClick={() => setSidebarOpen(false)}
@@ -63,7 +63,7 @@ function App() {
       )}
       
       <main className={`flex-1 overflow-y-auto transition-all duration-300 ${
-        window.innerWidth >= 769 && sidebarOpen ? 'ml-[280px]' : 'ml-0'
+        sidebarOpen ? 'md:ml-[280px]' : 'ml-0'
       }`}>
         {/* Toggle Button - Mobile friendly */}
         {!sidebarOpen && (
