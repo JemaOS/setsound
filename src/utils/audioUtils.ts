@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jema Technology.
+// Distributed under the license specified in the root directory of this project.
+
 export class AudioUtils {
   static formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);

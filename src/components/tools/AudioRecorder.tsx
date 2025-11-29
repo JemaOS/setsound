@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jema Technology.
+// Distributed under the license specified in the root directory of this project.
+
 import { useState, useRef, useEffect } from 'react';
 import { AudioUtils } from '@/utils/audioUtils';
 import { ExportModal } from '@/components/ExportModal';

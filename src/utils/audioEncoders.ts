@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jema Technology.
+// Distributed under the license specified in the root directory of this project.
+
 export class AudioEncoders {
   /**
    * Convert AudioBuffer to MP3 using lamejs
