@@ -558,33 +558,14 @@ const TrackTimeline = ({ track, trackIndex, zoom, globalTime, isPlaying, onCut, 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const duration = track.buffer.duration;
-  
-  // Sync local time with global playback
-  useEffect(() => {
-    setLocalTime(globalTime);
-  }, [globalTime]);
 
   // Use waveform hook for better quality with zoom
   useWaveform({ audioBuffer: track.buffer, canvasRef, color: '#8286ef', zoom });
 
-  // Sync local time with global playback - Continue from current position and update during playback
+  // Sync local time with global playback - Always follow globalTime
   useEffect(() => {
-    if (isPlaying) {
-      setLocalTime(globalTime);
-    }
-    // Don't reset to 0 when playback stops - keep current position
-  }, [globalTime, isPlaying]);
-  
-  // Update local time during playback
-  useEffect(() => {
-    if (isPlaying) {
-      const interval = setInterval(() => {
-        setLocalTime(prev => Math.min(prev + 0.1, duration));
-      }, 100);
-      
-      return () => clearInterval(interval);
-    }
-  }, [isPlaying, duration]);
+    setLocalTime(globalTime);
+  }, [globalTime]);
 
   // Handle Delete key for this track
   useEffect(() => {
