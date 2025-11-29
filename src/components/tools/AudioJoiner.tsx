@@ -550,7 +550,7 @@ interface TrackTimelineProps {
   onResizeSegment: (segmentId: string, newSegments: AudioSegment[]) => void;
 }
 
-const TrackTimeline = ({ track, trackIndex, zoom, globalTime, isPlaying, onCut, onDeleteSegment, onToggleSegment, onResizeSegment }: TrackTimelineProps) => {
+const TrackTimeline = ({ track, trackIndex, zoom, globalTime, onCut, onDeleteSegment, onToggleSegment, onResizeSegment }: TrackTimelineProps) => {
   const [localTime, setLocalTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [resizingSegment, setResizingSegment] = useState<{ id: string; edge: 'start' | 'end' } | null>(null);
