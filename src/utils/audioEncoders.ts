@@ -2,7 +2,7 @@ export class AudioEncoders {
   /**
    * Convert AudioBuffer to MP3 using lamejs
    */
-  static async audioBufferToMp3(audioBuffer: AudioBuffer, bitrate: number = 320): Promise<Blob> {
+  static async audioBufferToMp3(audioBuffer: AudioBuffer, _bitrate: number = 320): Promise<Blob> {
     // For now, return WAV as MP3 encoding requires lamejs library setup
     // This would need proper implementation with lamejs
     const wavBlob = this.audioBufferToWav(audioBuffer);

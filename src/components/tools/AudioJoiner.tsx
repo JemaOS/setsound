@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { AudioUtils } from '@/utils/audioUtils';
 import { AudioEncoders } from '@/utils/audioEncoders';
 import { AudioTrack, AudioSegment } from '@/types';
-import { WaveformTrack } from '@/components/WaveformTrack';
 import { useHistory } from '@/hooks/useHistory';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useWaveform } from '@/hooks/useWaveform';
@@ -26,15 +25,15 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // History management
-  const { current: tracks, push, undo, redo, canUndo, canRedo, reset } = useHistory<TrackWithSegments[]>({
+  const { current: tracks, push, undo, redo, canUndo, canRedo } = useHistory<TrackWithSegments[]>({
     initialState: []
   });
 
-  const { isPlaying, currentTime, duration, volume, play, pause, stop, seek, changeVolume } =
+  const { isPlaying, currentTime, duration, play, pause } =
     useAudioPlayer({
       audioBuffer: mergedBuffer,
       audioContext,
-      onTimeUpdate: (time) => {
+      onTimeUpdate: () => {
         // This will trigger re-render and update all track playheads
       }
     });
@@ -551,7 +550,7 @@ interface TrackTimelineProps {
   onResizeSegment: (segmentId: string, newSegments: AudioSegment[]) => void;
 }
 
-const TrackTimeline = ({ track, trackIndex, zoom, globalTime, isPlaying, onCut, onDeleteSegment, onToggleSegment, onRemoveTrack, onResizeSegment }: TrackTimelineProps) => {
+const TrackTimeline = ({ track, trackIndex, zoom, globalTime, isPlaying, onCut, onDeleteSegment, onToggleSegment, onResizeSegment }: TrackTimelineProps) => {
   const [localTime, setLocalTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [resizingSegment, setResizingSegment] = useState<{ id: string; edge: 'start' | 'end' } | null>(null);

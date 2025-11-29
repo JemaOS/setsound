@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AudioUtils } from '@/utils/audioUtils';
 import { AudioEncoders } from '@/utils/audioEncoders';
 import { useWaveform } from '@/hooks/useWaveform';
@@ -55,15 +55,12 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
   
   useWaveform({ audioBuffer, canvasRef, color: '#8286ef', zoom });
   
-  const { isPlaying, currentTime, duration, volume, play, pause, stop, seek, changeVolume } =
+  const { isPlaying, currentTime, duration, volume, play, pause, seek, changeVolume } =
     useAudioPlayer({
       audioBuffer,
       audioContext,
-      onTimeUpdate: (time) => {
+      onTimeUpdate: () => {
         // Update playhead position during playback
-        if (isPlaying) {
-          // This will trigger re-render with new currentTime
-        }
       }
     });
 
@@ -368,9 +365,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
     const zoomedDiv = waveformContainerRef.current.firstElementChild as HTMLElement;
     if (!zoomedDiv) return;
 
-    const container = waveformContainerRef.current;
     const rect = zoomedDiv.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
     
     // Calculate position relative to the zoomed content
     const x = event.clientX - rect.left;

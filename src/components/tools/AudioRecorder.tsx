@@ -9,7 +9,6 @@ interface AudioRecorderProps {
 export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordings, setRecordings] = useState<Array<{ id: string; blob: Blob; duration: number; date: Date }>>([]);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -57,7 +56,6 @@ export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        setRecordedBlob(blob);
         const newRecording = {
           id: Date.now().toString(),
           blob,
@@ -203,7 +201,7 @@ export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
     draw();
   };
 
-  const handleDownload = (format: string, bitrate: number, customFileName?: string) => {
+  const handleDownload = (format: string, _bitrate: number, customFileName?: string) => {
     if (!selectedRecording) return;
 
     const filename = (customFileName || `recording_${new Date().toISOString().slice(0, 10)}`) + `.${format}`;

@@ -7,7 +7,7 @@ interface BPMDetectorProps {
   audioContext: AudioContext;
 }
 
-export const BPMDetector = ({ audioContext }: BPMDetectorProps) => {
+export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<BPMResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
