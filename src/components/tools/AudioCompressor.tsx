@@ -23,7 +23,7 @@ const BITRATE_OPTIONS: BitrateOption[] = [
   { value: 320, label: '320 kbps', description: 'Qualité maximale' },
 ];
 
-export const AudioCompressor = ({ audioContext }: AudioCompressorProps) => {
+export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressorProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [bitrate, setBitrate] = useState<number>(128);
   const [isProcessing, setIsProcessing] = useState(false);

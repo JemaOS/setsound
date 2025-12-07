@@ -27,7 +27,7 @@ const OUTPUT_FORMATS: FormatOption[] = [
   { id: 'm4a', name: 'M4A', extension: '.m4a', mimeType: 'audio/mp4' },
 ];
 
-export const AudioConverter = ({ audioContext }: AudioConverterProps) => {
+export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('mp3');
   const [isProcessing, setIsProcessing] = useState(false);
