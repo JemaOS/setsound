@@ -143,11 +143,6 @@ export const Sidebar = ({ currentTool, onToolChange, isOpen, onToggle }: Sidebar
           </button>
         ))}
       </nav>
-      
-      {/* Copyright - Hidden on very small screens */}
-      <div className="hidden sm:block p-4 border-t border-neutral-800 text-xs text-neutral-500 text-center">
-        © 2025 Jema Technology
-      </div>
     </aside>
   );
 };

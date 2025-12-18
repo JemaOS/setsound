@@ -87,7 +87,26 @@ function App() {
           </button>
         )}
         
-        {renderTool()}
+        <div className="min-h-full flex flex-col">
+          <div className="flex-1">
+            {renderTool()}
+          </div>
+          
+          {/* Footer */}
+          <footer className="py-4 px-6 text-center text-sm text-neutral-500 border-t border-neutral-800/50">
+            Développé par{' '}
+            <a 
+              href="https://www.jematechnology.fr/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="font-semibold transition-all hover:opacity-80"
+              style={{ color: '#6b6fdb' }}
+            >
+              Jema Technology
+            </a>
+            {' '}© 2025 • Open Source & Libre
+          </footer>
+        </div>
       </main>
     </div>
   );
