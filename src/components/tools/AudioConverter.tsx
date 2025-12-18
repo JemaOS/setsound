@@ -1,9 +1,20 @@
 // Copyright (c) 2025 Jema Technology.
 // Distributed under the license specified in the root directory of this project.
 
-import { useState, useRef } from 'react';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { useState, useRef, useEffect } from 'react';
+import { 
+  Input, 
+  BlobSource, 
+  Output, 
+  BufferTarget, 
+  WavOutputFormat, 
+  Mp3OutputFormat,
+  Mp4OutputFormat,
+  Conversion,
+  ALL_FORMATS
+} from 'mediabunny';
+import { ffmpegConverter } from '@/utils/ffmpegUtils';
+import { initMediaBunny } from '@/utils/mediabunnyConfig';
 
 interface AudioConverterProps {
   audioContext: AudioContext;
@@ -28,8 +39,13 @@ const OUTPUT_FORMATS: FormatOption[] = [
 ];
 
 export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterProps) => {
+  useEffect(() => {
+    initMediaBunny();
+  }, []);
+
   const [file, setFile] = useState<File | null>(null);
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('mp3');
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
@@ -37,35 +53,6 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
   const [error, setError] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const ffmpegRef = useRef<FFmpeg | null>(null);
-
-  const loadFFmpeg = async () => {
-    if (ffmpegRef.current?.loaded) {
-      return ffmpegRef.current;
-    }
-
-    const ffmpeg = new FFmpeg();
-    
-    ffmpeg.on('progress', ({ progress: p }) => {
-      setProgress(Math.round(p * 100));
-    });
-
-    ffmpeg.on('log', ({ message }) => {
-      console.log('[FFmpeg]', message);
-    });
-
-    setProgressMessage('Chargement de FFmpeg...');
-    
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-    
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    });
-
-    ffmpegRef.current = ffmpeg;
-    return ffmpeg;
-  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -92,27 +79,6 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
     event.preventDefault();
   };
 
-  const getFFmpegArgs = (inputFile: string, outputFile: string, format: OutputFormat): string[] => {
-    const baseArgs = ['-i', inputFile];
-    
-    switch (format) {
-      case 'mp3':
-        return [...baseArgs, '-vn', '-acodec', 'libmp3lame', '-q:a', '2', outputFile];
-      case 'wav':
-        return [...baseArgs, '-vn', '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', outputFile];
-      case 'ogg':
-        return [...baseArgs, '-vn', '-acodec', 'libvorbis', '-q:a', '6', outputFile];
-      case 'flac':
-        return [...baseArgs, '-vn', '-acodec', 'flac', '-compression_level', '8', outputFile];
-      case 'aac':
-        return [...baseArgs, '-vn', '-acodec', 'aac', '-b:a', '192k', outputFile];
-      case 'm4a':
-        return [...baseArgs, '-vn', '-acodec', 'aac', '-b:a', '192k', outputFile];
-      default:
-        return [...baseArgs, '-vn', outputFile];
-    }
-  };
-
   const handleConvert = async () => {
     if (!file) return;
 
@@ -123,43 +89,87 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
       setConvertedBlob(null);
 
       setProgressMessage('Initialisation...');
-      const ffmpeg = await loadFFmpeg();
-
-      const inputFileName = `input_${Date.now()}${getFileExtension(file.name)}`;
-      const formatOption = OUTPUT_FORMATS.find(f => f.id === outputFormat)!;
-      const outputFileName = `output_${Date.now()}${formatOption.extension}`;
-
-      setProgressMessage('Chargement du fichier...');
-      setProgress(10);
       
-      const inputData = await fetchFile(file);
-      await ffmpeg.writeFile(inputFileName, inputData);
+      const formatOption = OUTPUT_FORMATS.find(f => f.id === outputFormat)!;
 
-      setProgressMessage('Conversion en cours...');
-      setProgress(20);
+      // Use FFmpeg for FLAC and OGG
+      if (outputFormat === 'flac' || outputFormat === 'ogg') {
+        setProgressMessage('Chargement de FFmpeg...');
+        const blob = await ffmpegConverter.convert(
+            file, 
+            outputFormat, 
+            (p) => {
+                setProgress(p);
+                setProgressMessage('Conversion en cours...');
+            },
+            (msg) => {
+                // Optional: show detailed logs in a debug area or console
+                console.log(msg);
+            }
+        );
+        
+        setConvertedBlob(blob);
+        setProgress(100);
+        setProgressMessage('Conversion terminée !');
+        setIsProcessing(false);
+        return;
+      }
+      
+      const input = new Input({
+        source: new BlobSource(file),
+        formats: ALL_FORMATS
+      });
 
-      const args = getFFmpegArgs(inputFileName, outputFileName, outputFormat);
-      await ffmpeg.exec(args);
+      const target = new BufferTarget();
+      let outputFormatInstance;
+      let audioOptions: any = { forceTranscode: true };
+
+      switch (outputFormat) {
+        case 'mp3':
+          outputFormatInstance = new Mp3OutputFormat();
+          audioOptions = { ...audioOptions, codec: 'mp3', bitrate: 192000 };
+          break;
+        case 'wav':
+          outputFormatInstance = new WavOutputFormat();
+          audioOptions = { ...audioOptions, codec: 'pcm-s16', sampleRate: 44100, numberOfChannels: 2 };
+          break;
+        case 'aac':
+        case 'm4a':
+          outputFormatInstance = new Mp4OutputFormat();
+          audioOptions = { ...audioOptions, codec: 'aac', bitrate: 192000 };
+          break;
+        default:
+          throw new Error(`Format non supporté: ${outputFormat}`);
+      }
+
+      const output = new Output({
+        target: target,
+        format: outputFormatInstance
+      });
+
+      setProgressMessage('Configuration...');
+      
+      const conversion = await Conversion.init({
+        input,
+        output,
+        audio: audioOptions
+      });
+
+      conversion.onProgress = (p) => {
+        setProgress(Math.round(p * 100));
+        setProgressMessage('Conversion en cours...');
+      };
+
+      await conversion.execute();
 
       setProgressMessage('Finalisation...');
       setProgress(90);
 
-      const outputData = await ffmpeg.readFile(outputFileName);
-
-      // Clean up
-      await ffmpeg.deleteFile(inputFileName);
-      await ffmpeg.deleteFile(outputFileName);
-
-      // Create blob
-      let blob: Blob;
-      if (typeof outputData === 'string') {
-        const encoder = new TextEncoder();
-        blob = new Blob([encoder.encode(outputData)], { type: formatOption.mimeType });
-      } else {
-        const buffer = new ArrayBuffer(outputData.byteLength);
-        new Uint8Array(buffer).set(outputData);
-        blob = new Blob([buffer], { type: formatOption.mimeType });
+      if (!target.buffer) {
+        throw new Error("Erreur lors de la conversion: pas de données de sortie");
       }
+
+      const blob = new Blob([target.buffer], { type: formatOption.mimeType });
 
       setConvertedBlob(blob);
       setProgress(100);
@@ -206,12 +216,6 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const getFileExtension = (filename: string): string => {
-    const lastDot = filename.lastIndexOf('.');
-    if (lastDot === -1) return '';
-    return filename.substring(lastDot).toLowerCase();
   };
 
   return (
@@ -295,7 +299,14 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
               {OUTPUT_FORMATS.map((format) => (
                 <button
                   key={format.id}
-                  onClick={() => setOutputFormat(format.id)}
+                  onClick={() => {
+                    if (outputFormat !== format.id) {
+                      setOutputFormat(format.id);
+                      setConvertedBlob(null);
+                      setError(null);
+                      setProgress(0);
+                    }
+                  }}
                   disabled={isProcessing}
                   className={`
                     px-2 py-2 rounded-lg text-sm font-medium transition-all

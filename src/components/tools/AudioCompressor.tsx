@@ -1,9 +1,17 @@
 // Copyright (c) 2025 Jema Technology.
 // Distributed under the license specified in the root directory of this project.
 
-import { useState, useRef } from 'react';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { useState, useRef, useEffect } from 'react';
+import { 
+  Input, 
+  BlobSource, 
+  Output, 
+  BufferTarget, 
+  Mp3OutputFormat, 
+  Conversion,
+  ALL_FORMATS
+} from 'mediabunny';
+import { initMediaBunny } from '@/utils/mediabunnyConfig';
 
 interface AudioCompressorProps {
   audioContext: AudioContext;
@@ -24,6 +32,10 @@ const BITRATE_OPTIONS: BitrateOption[] = [
 ];
 
 export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressorProps) => {
+  useEffect(() => {
+    initMediaBunny();
+  }, []);
+
   const [file, setFile] = useState<File | null>(null);
   const [bitrate, setBitrate] = useState<number>(128);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -33,35 +45,6 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
   const [error, setError] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const ffmpegRef = useRef<FFmpeg | null>(null);
-
-  const loadFFmpeg = async () => {
-    if (ffmpegRef.current?.loaded) {
-      return ffmpegRef.current;
-    }
-
-    const ffmpeg = new FFmpeg();
-    
-    ffmpeg.on('progress', ({ progress: p }) => {
-      setProgress(Math.round(p * 100));
-    });
-
-    ffmpeg.on('log', ({ message }) => {
-      console.log('[FFmpeg]', message);
-    });
-
-    setProgressMessage('Chargement de FFmpeg...');
-    
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-    
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    });
-
-    ffmpegRef.current = ffmpeg;
-    return ffmpeg;
-  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -88,12 +71,6 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
     event.preventDefault();
   };
 
-  const getFileExtension = (filename: string): string => {
-    const lastDot = filename.lastIndexOf('.');
-    if (lastDot === -1) return '';
-    return filename.substring(lastDot).toLowerCase();
-  };
-
   const handleCompress = async () => {
     if (!file) return;
 
@@ -104,50 +81,45 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
       setCompressedBlob(null);
 
       setProgressMessage('Initialisation...');
-      const ffmpeg = await loadFFmpeg();
-
-      const inputFileName = `input_${Date.now()}${getFileExtension(file.name)}`;
-      const outputFileName = `output_${Date.now()}.mp3`;
-
-      setProgressMessage('Chargement du fichier...');
-      setProgress(10);
       
-      const inputData = await fetchFile(file);
-      await ffmpeg.writeFile(inputFileName, inputData);
+      const input = new Input({
+        source: new BlobSource(file),
+        formats: ALL_FORMATS
+      });
 
-      setProgressMessage('Compression en cours...');
-      setProgress(20);
+      const target = new BufferTarget();
+      const output = new Output({
+        target,
+        format: new Mp3OutputFormat()
+      });
 
-      // Compress to MP3 with specified bitrate
-      await ffmpeg.exec([
-        '-i', inputFileName,
-        '-vn',                      // No video
-        '-acodec', 'libmp3lame',    // MP3 codec
-        '-b:a', `${bitrate}k`,      // Bitrate
-        '-ar', '44100',             // Sample rate
-        '-ac', '2',                 // Stereo
-        outputFileName
-      ]);
+      setProgressMessage('Configuration...');
+      
+      const conversion = await Conversion.init({
+        input,
+        output,
+        audio: {
+          codec: 'mp3',
+          bitrate: bitrate * 1000,
+          forceTranscode: true
+        }
+      });
+
+      conversion.onProgress = (p) => {
+        setProgress(Math.round(p * 100));
+        setProgressMessage('Compression en cours...');
+      };
+
+      await conversion.execute();
 
       setProgressMessage('Finalisation...');
       setProgress(90);
 
-      const outputData = await ffmpeg.readFile(outputFileName);
-
-      // Clean up
-      await ffmpeg.deleteFile(inputFileName);
-      await ffmpeg.deleteFile(outputFileName);
-
-      // Create blob
-      let blob: Blob;
-      if (typeof outputData === 'string') {
-        const encoder = new TextEncoder();
-        blob = new Blob([encoder.encode(outputData)], { type: 'audio/mpeg' });
-      } else {
-        const buffer = new ArrayBuffer(outputData.byteLength);
-        new Uint8Array(buffer).set(outputData);
-        blob = new Blob([buffer], { type: 'audio/mpeg' });
+      if (!target.buffer) {
+        throw new Error("Erreur lors de la compression: pas de données de sortie");
       }
+
+      const blob = new Blob([target.buffer], { type: 'audio/mpeg' });
 
       setCompressedBlob(blob);
       setProgress(100);
@@ -282,7 +254,14 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
               {BITRATE_OPTIONS.map((option) => (
                 <button
                   key={option.value}
-                  onClick={() => setBitrate(option.value)}
+                  onClick={() => {
+                    if (bitrate !== option.value) {
+                      setBitrate(option.value);
+                      setCompressedBlob(null);
+                      setError(null);
+                      setProgress(0);
+                    }
+                  }}
                   disabled={isProcessing}
                   className={`
                     flex flex-col items-center px-2 py-2 rounded-lg transition-all

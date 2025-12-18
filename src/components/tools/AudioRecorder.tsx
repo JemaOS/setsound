@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { AudioUtils } from '@/utils/audioUtils';
+import { AudioEncoders } from '@/utils/audioEncoders';
 import { ExportModal } from '@/components/ExportModal';
 
 interface AudioRecorderProps {
@@ -206,11 +207,36 @@ export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
     draw();
   };
 
-  const handleDownload = (format: string, _bitrate: number, customFileName?: string) => {
+  const handleDownload = async (format: string, bitrate: number, customFileName?: string) => {
     if (!selectedRecording) return;
 
     const filename = (customFileName || `recording_${new Date().toISOString().slice(0, 10)}`) + `.${format}`;
-    AudioUtils.downloadBlob(selectedRecording.blob, filename);
+    
+    let blobToDownload = selectedRecording.blob;
+
+    try {
+      // Convert if necessary
+      if (format === 'mp3' || format === 'flac' || format === 'wav') {
+          // We need to decode to AudioBuffer first
+          const arrayBuffer = await selectedRecording.blob.arrayBuffer();
+          const audioContext = new AudioContext();
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+          if (format === 'mp3') {
+              blobToDownload = await AudioEncoders.audioBufferToMp3(audioBuffer, bitrate);
+          } else if (format === 'flac') {
+              blobToDownload = await AudioEncoders.audioBufferToFlac(audioBuffer);
+          } else if (format === 'wav') {
+              blobToDownload = AudioEncoders.audioBufferToWav(audioBuffer);
+          }
+      }
+
+      AudioUtils.downloadBlob(blobToDownload, filename);
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Export failed: " + (error instanceof Error ? error.message : String(error)));
+    }
+    
     setShowExportModal(false);
     setSelectedRecording(null);
   };

@@ -1,7 +1,9 @@
 // Copyright (c) 2025 Jema Technology.
 // Distributed under the license specified in the root directory of this project.
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { canEncode } from 'mediabunny';
+import { initMediaBunny } from '@/utils/mediabunnyConfig';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -14,6 +16,12 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
   const [format, setFormat] = useState<'wav' | 'mp3' | 'flac'>('wav');
   const [bitrate, setBitrate] = useState(320);
   const [customFileName, setCustomFileName] = useState(fileName.replace(/\.[^/.]+$/, '') + '_exported');
+  const [flacSupported, setFlacSupported] = useState(false);
+
+  useEffect(() => {
+    initMediaBunny();
+    canEncode('flac').then(setFlacSupported).catch(() => setFlacSupported(false));
+  }, []);
 
   if (!isOpen) return null;
 
@@ -64,7 +72,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
           {/* Format selection - Touch-friendly */}
           <div>
             <label className="block text-xs sm:text-sm text-neutral-400 mb-2 sm:mb-3">Format audio</label>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className={`grid gap-2 sm:gap-3 ${flacSupported ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <button
                 onClick={() => setFormat('wav')}
                 className={`px-3 sm:px-4 py-3 rounded-lg font-medium transition-all min-h-[56px] active:scale-95 ${
@@ -87,6 +95,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
                 <div className="text-base sm:text-lg font-bold">MP3</div>
                 <div className="text-xs opacity-80">Compressé</div>
               </button>
+              {flacSupported && (
               <button
                 onClick={() => setFormat('flac')}
                 className={`px-3 sm:px-4 py-3 rounded-lg font-medium transition-all min-h-[56px] active:scale-95 ${
@@ -98,6 +107,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
                 <div className="text-base sm:text-lg font-bold">FLAC</div>
                 <div className="text-xs opacity-80">Lossless</div>
               </button>
+              )}
             </div>
           </div>
 

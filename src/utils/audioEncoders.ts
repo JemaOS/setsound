@@ -1,25 +1,81 @@
 // Copyright (c) 2025 Jema Technology.
 // Distributed under the license specified in the root directory of this project.
 
+import { 
+  Input, 
+  BlobSource, 
+  Output, 
+  BufferTarget, 
+  Mp3OutputFormat, 
+  FlacOutputFormat,
+  Conversion,
+  ALL_FORMATS
+} from 'mediabunny';
+import { initMediaBunny } from './mediabunnyConfig';
+
 export class AudioEncoders {
   /**
-   * Convert AudioBuffer to MP3 using lamejs
+   * Convert AudioBuffer to MP3 using MediaBunny
    */
-  static async audioBufferToMp3(audioBuffer: AudioBuffer, _bitrate: number = 320): Promise<Blob> {
-    // For now, return WAV as MP3 encoding requires lamejs library setup
-    // This would need proper implementation with lamejs
+  static async audioBufferToMp3(audioBuffer: AudioBuffer, bitrate: number = 320): Promise<Blob> {
+    initMediaBunny();
     const wavBlob = this.audioBufferToWav(audioBuffer);
-    return wavBlob;
+    
+    const input = new Input({
+      source: new BlobSource(wavBlob),
+      formats: ALL_FORMATS
+    });
+
+    const target = new BufferTarget();
+    const output = new Output({
+      target,
+      format: new Mp3OutputFormat()
+    });
+
+    const conversion = await Conversion.init({
+      input,
+      output,
+      audio: {
+        codec: 'mp3',
+        bitrate: bitrate * 1000
+      }
+    });
+
+    await conversion.execute();
+
+    if (!target.buffer) throw new Error("MP3 encoding failed");
+    return new Blob([target.buffer], { type: 'audio/mpeg' });
   }
 
   /**
-   * Convert AudioBuffer to FLAC
+   * Convert AudioBuffer to FLAC using MediaBunny
    */
   static async audioBufferToFlac(audioBuffer: AudioBuffer): Promise<Blob> {
-    // FLAC encoding would require a FLAC encoder library
-    // For now, return WAV as it's lossless like FLAC
     const wavBlob = this.audioBufferToWav(audioBuffer);
-    return wavBlob;
+    
+    const input = new Input({
+      source: new BlobSource(wavBlob),
+      formats: ALL_FORMATS
+    });
+
+    const target = new BufferTarget();
+    const output = new Output({
+      target,
+      format: new FlacOutputFormat()
+    });
+
+    const conversion = await Conversion.init({
+      input,
+      output,
+      audio: {
+        codec: 'flac'
+      }
+    });
+
+    await conversion.execute();
+
+    if (!target.buffer) throw new Error("FLAC encoding failed");
+    return new Blob([target.buffer], { type: 'audio/flac' });
   }
 
   /**
