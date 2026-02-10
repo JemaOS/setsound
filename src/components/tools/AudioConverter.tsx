@@ -2,14 +2,13 @@
 // Distributed under the license specified in the root directory of this project.
 
 import { useState, useRef, useEffect } from 'react';
-import { 
-  Input, 
-  BlobSource, 
-  Output, 
-  BufferTarget, 
-  WavOutputFormat, 
+import {
+  Input,
+  BlobSource,
+  Output,
+  BufferTarget,
+  WavOutputFormat,
   Mp3OutputFormat,
-  Mp4OutputFormat,
   Conversion,
   ALL_FORMATS
 } from 'mediabunny';
@@ -21,6 +20,9 @@ interface AudioConverterProps {
 }
 
 type OutputFormat = 'mp3' | 'wav' | 'ogg' | 'flac' | 'aac' | 'm4a';
+
+/** Formats that are always handled by FFmpeg WASM (no MediaBunny path). */
+const FFMPEG_ONLY_FORMATS = new Set<OutputFormat>(['flac', 'ogg', 'aac', 'm4a']);
 
 interface FormatOption {
   id: OutputFormat;
@@ -79,6 +81,27 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
     event.preventDefault();
   };
 
+  /** Convert a file using FFmpeg WASM and update component state. */
+  const convertWithFFmpeg = async (sourceFile: File, format: string, fallback = false): Promise<void> => {
+    setProgressMessage(fallback ? 'Chargement de FFmpeg (fallback)...' : 'Chargement de FFmpeg...');
+    const blob = await ffmpegConverter.convert(
+      sourceFile,
+      format,
+      (p) => {
+        setProgress(p);
+        setProgressMessage(fallback ? 'Conversion en cours (FFmpeg)...' : 'Conversion en cours...');
+      },
+      (msg) => {
+        console.log(msg);
+      }
+    );
+
+    setConvertedBlob(blob);
+    setProgress(100);
+    setProgressMessage('Conversion terminée !');
+    setIsProcessing(false);
+  };
+
   const handleConvert = async () => {
     if (!file) return;
 
@@ -92,29 +115,13 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
       
       const formatOption = OUTPUT_FORMATS.find(f => f.id === outputFormat)!;
 
-      // Use FFmpeg for FLAC and OGG
-      if (outputFormat === 'flac' || outputFormat === 'ogg') {
-        setProgressMessage('Chargement de FFmpeg...');
-        const blob = await ffmpegConverter.convert(
-            file, 
-            outputFormat, 
-            (p) => {
-                setProgress(p);
-                setProgressMessage('Conversion en cours...');
-            },
-            (msg) => {
-                // Optional: show detailed logs in a debug area or console
-                console.log(msg);
-            }
-        );
-        
-        setConvertedBlob(blob);
-        setProgress(100);
-        setProgressMessage('Conversion terminée !');
-        setIsProcessing(false);
+      // Use FFmpeg for formats it handles natively (FLAC, OGG, AAC, M4A)
+      if (FFMPEG_ONLY_FORMATS.has(outputFormat)) {
+        await convertWithFFmpeg(file, outputFormat);
         return;
       }
       
+      // Use MediaBunny for MP3 and WAV (with FFmpeg fallback if MediaBunny can't encode)
       const input = new Input({
         source: new BlobSource(file),
         formats: ALL_FORMATS
@@ -133,11 +140,6 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
           outputFormatInstance = new WavOutputFormat();
           audioOptions = { ...audioOptions, codec: 'pcm-s16', sampleRate: 44100, numberOfChannels: 2 };
           break;
-        case 'aac':
-        case 'm4a':
-          outputFormatInstance = new Mp4OutputFormat();
-          audioOptions = { ...audioOptions, codec: 'aac', bitrate: 192000 };
-          break;
         default:
           throw new Error(`Format non supporté: ${outputFormat}`);
       }
@@ -154,6 +156,13 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
         output,
         audio: audioOptions
       });
+
+      // Check if MediaBunny can handle this conversion on the current platform
+      if (!conversion.isValid) {
+        console.warn(`MediaBunny cannot encode ${outputFormat} on this platform, falling back to FFmpeg WASM`);
+        await convertWithFFmpeg(file, outputFormat, true);
+        return;
+      }
 
       conversion.onProgress = (p) => {
         setProgress(Math.round(p * 100));

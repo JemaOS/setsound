@@ -64,6 +64,18 @@ export class FFmpegConverter {
         } else if (outputFormat === 'ogg') {
             args.push('-c:a', 'libvorbis');
             args.push('-q:a', '4');
+        } else if (outputFormat === 'aac') {
+            args.push('-c:a', 'aac');
+            args.push('-b:a', '192k');
+            args.push('-f', 'adts'); // raw AAC/ADTS stream for .aac extension
+        } else if (outputFormat === 'm4a') {
+            args.push('-c:a', 'aac');
+            args.push('-b:a', '192k');
+        } else if (outputFormat === 'mp3') {
+            args.push('-c:a', 'libmp3lame');
+            args.push('-b:a', '192k');
+        } else if (outputFormat === 'wav') {
+            args.push('-c:a', 'pcm_s16le');
         }
 
         args.push(outputName);
@@ -78,7 +90,15 @@ export class FFmpegConverter {
         ffmpeg.FS('unlink', outputName);
 
         // Determine mime type
-        const mimeType = outputFormat === 'flac' ? 'audio/flac' : 'audio/ogg';
+        const mimeTypes: Record<string, string> = {
+            flac: 'audio/flac',
+            ogg: 'audio/ogg',
+            aac: 'audio/aac',
+            m4a: 'audio/mp4',
+            mp3: 'audio/mpeg',
+            wav: 'audio/wav',
+        };
+        const mimeType = mimeTypes[outputFormat] || 'audio/octet-stream';
         return new Blob([data.buffer as any], { type: mimeType });
     } catch (error) {
         console.error('FFmpeg conversion error:', error);
