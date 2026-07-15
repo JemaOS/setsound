@@ -65,7 +65,7 @@ async function getAccessToken(): Promise<string | null> {
       window.opener.postMessage({ type: 'jemaos_token_request' }, '*');
     }
     // Broadcast to top
-    if (window.top !== window) {
+    if (window.top && window.top !== window) {
       window.top.postMessage({ type: 'jemaos_token_request' }, '*');
     }
 
