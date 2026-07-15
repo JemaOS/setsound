@@ -3,15 +3,23 @@ import React, { useEffect, useState } from 'react';
 const API_BASE = 'https://test-connect-api.jematech.fr';
 const API_KEY = 'e58492a3-b452-4197-9f4a-deb7915b9446';
 
-declare global {
-  interface Window {
-    getJemaOSToken?: () => Promise<string | null>;
-    jemaosToken?: string;
+function getTokenFromCookie(): string | null {
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'jemaos_access_token' && value) {
+      return value;
+    }
   }
+  return null;
 }
 
 async function getAccessToken(): Promise<string | null> {
-  // Method 1: Direct function (injected by ChromeOS)
+  // Method 1: Cookie injected by ChromeOS after SAML login
+  const cookieToken = getTokenFromCookie();
+  if (cookieToken) return cookieToken;
+
+  // Method 2: Direct function (injected by ChromeOS)
   if (window.getJemaOSToken) {
     try {
       return await window.getJemaOSToken();
@@ -20,65 +28,18 @@ async function getAccessToken(): Promise<string | null> {
     }
   }
 
-  // Method 2: Direct property (injected by ChromeOS)
+  // Method 3: Direct property (injected by ChromeOS)
   if (window.jemaosToken) {
     return window.jemaosToken;
   }
 
-  // Method 3: sessionStorage (same-origin only)
+  // Method 4: sessionStorage (same-origin fallback)
   try {
     const sessionToken = sessionStorage.getItem('jemaos_access_token');
     if (sessionToken) return sessionToken;
-  } catch {
-    // sessionStorage might not be available
-  }
+  } catch {}
 
-  // Method 4: localStorage (same-origin only, but persists)
-  try {
-    const localToken = localStorage.getItem('jemaos_access_token');
-    if (localToken) return localToken;
-  } catch {
-    // localStorage might not be available
-  }
-
-  // Method 5: Cross-origin postMessage to parent window
-  // This works if the PWA is loaded inside an iframe or window opened by ChromeOS
-  const token = await new Promise<string | null>((resolve) => {
-    const timeout = setTimeout(() => resolve(null), 3000);
-
-    const handler = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'jemaos_token_response') {
-        clearTimeout(timeout);
-        window.removeEventListener('message', handler);
-        resolve(event.data.token || null);
-      }
-    };
-
-    window.addEventListener('message', handler);
-
-    // Ask parent for token
-    if (window.parent !== window) {
-      window.parent.postMessage({ type: 'jemaos_token_request' }, '*');
-    }
-    // Ask opener for token
-    if (window.opener) {
-      window.opener.postMessage({ type: 'jemaos_token_request' }, '*');
-    }
-    // Broadcast to top
-    const topWin = window.top;
-    if (topWin && topWin !== window) {
-      topWin.postMessage({ type: 'jemaos_token_request' }, '*');
-    }
-
-    // If no parent/opener, resolve null immediately
-    if (window.parent === window && !window.opener) {
-      clearTimeout(timeout);
-      window.removeEventListener('message', handler);
-      resolve(null);
-    }
-  });
-
-  return token;
+  return null;
 }
 
 async function checkSubscription(token: string): Promise<boolean> {
