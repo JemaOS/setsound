@@ -11,6 +11,7 @@ import { AudioConverter } from './components/tools/AudioConverter';
 import { AudioCompressor } from './components/tools/AudioCompressor';
 import { ToolType } from './types';
 import { useAudioContext } from './hooks/useAudioContext';
+import { SubscriptionGuard } from './SubscriptionGuard';
 
 function App() {
   const [currentTool, setCurrentTool] = useState<ToolType>('cutter');
@@ -55,6 +56,7 @@ function App() {
   };
 
   return (
+    <SubscriptionGuard appName="SetSound">
     <div className="flex h-screen overflow-hidden bg-neutral-950">
       <Sidebar
         currentTool={currentTool}
@@ -109,6 +111,7 @@ function App() {
         </div>
       </main>
     </div>
+    </SubscriptionGuard>
   );
 }
 
