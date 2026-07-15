@@ -3,6 +3,13 @@ import React, { useEffect, useState } from 'react';
 const API_BASE = 'https://test-connect-api.jematech.fr';
 const API_KEY = 'e58492a3-b452-4197-9f4a-deb7915b9446';
 
+declare global {
+  interface Window {
+    getJemaOSToken?: () => Promise<string | null>;
+    jemaosToken?: string;
+  }
+}
+
 function getTokenFromCookie(): string | null {
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
