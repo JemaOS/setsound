@@ -111,73 +111,78 @@ function UpgradeScreen({ appName }: { appName: string }) {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
       minHeight: '100vh',
       background: 'linear-gradient(145deg, #0b0f1a 0%, #151b2b 50%, #1a1f35 100%)',
       color: '#0f172a',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       textAlign: 'center',
-      padding: '1.5rem',
+      padding: '1rem',
       boxSizing: 'border-box',
-      position: 'relative',
+      overflow: 'auto',
     }}>
       <div style={{
-        background: 'rgba(255, 255, 255, 0.96)',
-        borderRadius: '28px',
-        padding: '3rem 2.5rem',
+        flex: '1 0 auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         width: '100%',
-        maxWidth: '420px',
-        boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.45)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
+        padding: '1rem 0',
       }}>
-        <div style={{ marginBottom: '2.5rem' }}>
-          <JemaOSLogo />
-        </div>
-        <LockIcon />
-        <h1 style={{
-          fontSize: '1.75rem',
-          fontWeight: 700,
-          margin: '0 0 0.75rem',
-          letterSpacing: '-0.02em',
-          color: '#0f172a',
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.96)',
+          borderRadius: '28px',
+          padding: '2rem 2rem',
+          width: '100%',
+          maxWidth: '420px',
+          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.45)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
         }}>
-          {appName}
-        </h1>
-        <p style={{
-          fontSize: '1rem',
-          color: '#475569',
-          margin: '0 0 2rem',
-          lineHeight: 1.6,
-        }}>
-          Cette application nécessite un abonnement JemaOS Pro.
-        </p>
-        <a
-          href="https://www.jemaos.com/tarifs"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'inline-block',
-            background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-            color: '#fff',
-            padding: '0.875rem 2.5rem',
-            borderRadius: '9999px',
-            textDecoration: 'none',
+          <div style={{ marginBottom: '2rem' }}>
+            <JemaOSLogo />
+          </div>
+          <LockIcon />
+          <h1 style={{
+            fontSize: '1.75rem',
+            fontWeight: 700,
+            margin: '0 0 0.75rem',
+            letterSpacing: '-0.02em',
+            color: '#0f172a',
+          }}>
+            {appName}
+          </h1>
+          <p style={{
             fontSize: '1rem',
-            fontWeight: 600,
-            boxShadow: '0 10px 25px -5px rgba(79, 70, 229, 0.45)',
-          }}
-        >
-          Passer à Pro
-        </a>
+            color: '#475569',
+            margin: '0 0 2rem',
+            lineHeight: 1.6,
+          }}>
+            Cette application nécessite un abonnement JemaOS Pro.
+          </p>
+          <a
+            href="https://www.jemaos.com/tarifs"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-block',
+              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+              color: '#fff',
+              padding: '0.875rem 2.5rem',
+              borderRadius: '9999px',
+              textDecoration: 'none',
+              fontSize: '1rem',
+              fontWeight: 600,
+              boxShadow: '0 10px 25px -5px rgba(79, 70, 229, 0.45)',
+            }}
+          >
+            Passer à Pro
+          </a>
+        </div>
       </div>
       <div style={{
-        position: 'absolute',
-        bottom: '1.5rem',
-        left: 0,
-        right: 0,
+        flexShrink: 0,
         textAlign: 'center',
+        padding: '0.75rem 0',
         fontSize: '0.8rem',
         color: 'rgba(255, 255, 255, 0.45)',
       }}>
