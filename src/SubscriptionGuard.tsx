@@ -1,7 +1,41 @@
 import React, { useState, useEffect } from 'react';
 
+// SubscriptionGuard v2 (2026-08-03)
+// ---------------------------------
+// Fix "perte de licence après 24 h" : le token JWT (cookie
+// jemaos_access_token) expire après 24 h et la version précédente
+// affichait le mur "JemaOS Pro" sur simple échec du check, sans jamais
+// tenter de rafraîchir le token. Cette version :
+//   1. distingue "pas d'abonnement" (mur justifié) de "token expiré"
+//      (401/403 -> tentative de refresh) et d'"erreur réseau" (pas de mur) ;
+//   2. appelle POST /v1/connect/auth/refresh sur un 401, puis retente ;
+//   3. permet l'usage HORS-LIGNE des PWA après une licence vérifiée :
+//      grace de OFFLINE_GRACE_DAYS jours sans internet, renouvelée à
+//      chaque check en ligne (et révoquée si le serveur confirme "pas
+//      d'abonnement"). La grace vit dans le stockage du PWA, donc par
+//      compte utilisateur de l'appareil ;
+//   4. n'affiche le mur que sur "pas d'abonnement" confirmé ou après
+//      refresh impossible, avec un bouton "Se reconnecter" vers le SSO.
+// Fichier partagé : le garder identique dans toutes les apps PWA.
+
 const API_BASE = 'https://test-connect-api.jematech.fr';
 const API_KEY = 'e58492a3-b452-4197-9f4a-deb7915b9446';
+
+// Portail SSO qui réémet un cookie jemaos_access_token frais si la session
+// utilisateur est encore vivante (ajuster si le portail change).
+const AUTH_URL = 'https://nephtys.jemaos.com/auth';
+
+// Route de refresh du backend connect (404 -> fallback reconnexion).
+const REFRESH_URL = `${API_BASE}/v1/connect/auth/refresh`;
+
+const GRACE_KEY = 'jemaos_sub_ok_until';
+// Tolérance hors-ligne : après une vérification réussie, l'abonnement est
+// considéré valide sans internet pendant cette durée (renouvelée à chaque
+// check en ligne, donc "OFFLINE_GRACE_DAYS jours depuis le dernier
+// contact"). Stockée par profil utilisateur/appareil : liée au compte Jema
+// connecté sur cet appareil uniquement.
+const OFFLINE_GRACE_DAYS = 7;
+const GRACE_MS = OFFLINE_GRACE_DAYS * 24 * 60 * 60 * 1000;
 
 declare global {
   interface Window {
@@ -9,6 +43,9 @@ declare global {
     jemaosToken?: string;
   }
 }
+
+type CheckResult = 'ok' | 'no-subscription' | 'unauthorized' | 'error';
+type VerifyOutcome = 'allowed' | 'denied' | 'retry';
 
 function getTokenFromCookie(): string | null {
   const cookies = document.cookie.split(';');
@@ -21,27 +58,67 @@ function getTokenFromCookie(): string | null {
   return null;
 }
 
-async function getAccessToken(): Promise<string | null> {
+async function getAccessToken(exclude?: string): Promise<string | null> {
   const cookieToken = getTokenFromCookie();
-  if (cookieToken) return cookieToken;
+  if (cookieToken && cookieToken !== exclude) return cookieToken;
   if (window.getJemaOSToken) {
     try {
-      return await window.getJemaOSToken();
+      const t = await window.getJemaOSToken();
+      if (t && t !== exclude) return t;
     } catch {
-      return null;
+      // fall through
     }
   }
-  if (window.jemaosToken) {
+  if (window.jemaosToken && window.jemaosToken !== exclude) {
     return window.jemaosToken;
   }
   try {
     const sessionToken = sessionStorage.getItem('jemaos_access_token');
-    if (sessionToken) return sessionToken;
+    if (sessionToken && sessionToken !== exclude) return sessionToken;
   } catch {}
   return null;
 }
 
-async function checkSubscription(token: string): Promise<boolean> {
+// Supprime le cookie rejeté par l'API (best-effort : le domaine exact du
+// Set-Cookie initial est inconnu, on essaie les variantes usuelles).
+function clearStaleTokenCookie() {
+  const domains: (string | undefined)[] = [
+    undefined,
+    window.location.hostname,
+    '.jemaos.com',
+    '.jematech.fr',
+  ];
+  for (const domain of domains) {
+    document.cookie =
+      'jemaos_access_token=; Max-Age=0; path=/' +
+      (domain ? `; domain=${domain}` : '');
+  }
+}
+
+function markSubscriptionOk() {
+  try {
+    localStorage.setItem(GRACE_KEY, String(Date.now() + GRACE_MS));
+  } catch {}
+}
+
+// Révocation immédiate : quand le serveur confirme "pas d'abonnement",
+// la grace hors-ligne ne doit pas prolonger l'accès.
+function clearSubscriptionGrace() {
+  try {
+    localStorage.removeItem(GRACE_KEY);
+  } catch {}
+}
+
+function inGracePeriod(): boolean {
+  try {
+    const until = Number(localStorage.getItem(GRACE_KEY) || 0);
+    return Date.now() < until;
+  } catch {
+    return false;
+  }
+}
+
+async function checkSubscription(token: string): Promise<CheckResult> {
   try {
     const res = await fetch(`${API_BASE}/v1/connect/os/subscription`, {
       method: 'POST',
@@ -52,12 +129,100 @@ async function checkSubscription(token: string): Promise<boolean> {
       },
       body: JSON.stringify({}),
     });
-    if (!res.ok) return false;
+    if (res.status === 401 || res.status === 403) return 'unauthorized';
+    if (!res.ok) return 'error'; // 5xx : ne jamais murer sur une panne API
     const data = await res.json();
-    return data.hasSubscription === true;
+    return data.hasSubscription === true ? 'ok' : 'no-subscription';
+  } catch {
+    return 'error'; // offline/DNS/CORS : conserver l'état courant
+  }
+}
+
+// Tente d'obtenir un token frais auprès du backend. Le serveur peut soit
+// poser un nouveau cookie (credentials: 'include'), soit renvoyer le token
+// en JSON (alors stocké en sessionStorage).
+async function tryRefreshToken(): Promise<boolean> {
+  try {
+    const res = await fetch(REFRESH_URL, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+      },
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) return false;
+    try {
+      const data = await res.json();
+      const t = data?.access_token || data?.accessToken || data?.token;
+      if (typeof t === 'string' && t) {
+        sessionStorage.setItem('jemaos_access_token', t);
+      }
+    } catch {
+      // Pas de corps JSON : le nouveau cookie suffit.
+    }
+    return true;
   } catch {
     return false;
   }
+}
+
+async function verifySubscription(): Promise<VerifyOutcome> {
+  let token = await getAccessToken();
+
+  if (token) {
+    const r = await checkSubscription(token);
+    if (r === 'ok') {
+      markSubscriptionOk();
+      return 'allowed';
+    }
+    if (r === 'no-subscription') {
+      clearSubscriptionGrace();
+      return 'denied';
+    }
+    if (r === 'error') return inGracePeriod() ? 'allowed' : 'retry';
+
+    // r === 'unauthorized' : token rejeté (expiré ~24 h). On le met de
+    // côté, on tente un refresh, puis on revérifie une fois.
+    clearStaleTokenCookie();
+    const stale = token;
+    if (await tryRefreshToken()) {
+      token = await getAccessToken(stale);
+      if (token) {
+        const r2 = await checkSubscription(token);
+        if (r2 === 'ok') {
+          markSubscriptionOk();
+          return 'allowed';
+        }
+        if (r2 === 'error') return inGracePeriod() ? 'allowed' : 'retry';
+        if (r2 === 'no-subscription') {
+          clearSubscriptionGrace();
+          return 'denied';
+        }
+      }
+    }
+    return inGracePeriod() ? 'allowed' : 'denied';
+  }
+
+  // Aucun token : la session SSO peut encore être vivante, on tente un
+  // refresh avant de conclure.
+  if (await tryRefreshToken()) {
+    token = await getAccessToken();
+    if (token) {
+      const r = await checkSubscription(token);
+      if (r === 'ok') {
+        markSubscriptionOk();
+        return 'allowed';
+      }
+      if (r === 'error') return inGracePeriod() ? 'allowed' : 'retry';
+      if (r === 'no-subscription') {
+        clearSubscriptionGrace();
+        return 'denied';
+      }
+    }
+  }
+  return inGracePeriod() ? 'allowed' : 'denied';
 }
 
 function JemaOSLogo() {
@@ -107,6 +272,7 @@ function LockIcon() {
 }
 
 function UpgradeScreen({ appName }: { appName: string }) {
+  const reconnectUrl = `${AUTH_URL}?return_to=${encodeURIComponent(window.location.href)}`;
   return (
     <div style={{
       display: 'flex',
@@ -159,24 +325,42 @@ function UpgradeScreen({ appName }: { appName: string }) {
           }}>
             Cette application nécessite un abonnement JemaOS Pro.
           </p>
-          <a
-            href="https://www.jemaos.com/tarifs"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-block',
-              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-              color: '#fff',
-              padding: '0.875rem 2.5rem',
-              borderRadius: '9999px',
-              textDecoration: 'none',
-              fontSize: '1rem',
-              fontWeight: 600,
-              boxShadow: '0 10px 25px -5px rgba(79, 70, 229, 0.45)',
-            }}
-          >
-            Passer à Pro
-          </a>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center' }}>
+            <a
+              href="https://www.jemaos.com/tarifs"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-block',
+                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                color: '#fff',
+                padding: '0.875rem 2.5rem',
+                borderRadius: '9999px',
+                textDecoration: 'none',
+                fontSize: '1rem',
+                fontWeight: 600,
+                boxShadow: '0 10px 25px -5px rgba(79, 70, 229, 0.45)',
+              }}
+            >
+              Passer à Pro
+            </a>
+            <a
+              href={reconnectUrl}
+              style={{
+                display: 'inline-block',
+                background: 'transparent',
+                color: '#4f46e5',
+                padding: '0.6rem 1.5rem',
+                borderRadius: '9999px',
+                textDecoration: 'none',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                border: '1px solid rgba(79, 70, 229, 0.4)',
+              }}
+            >
+              Se reconnecter
+            </a>
+          </div>
         </div>
       </div>
       <div style={{
@@ -219,10 +403,16 @@ export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ appName, c
   useEffect(() => {
     let cancelled = false;
     const verify = async () => {
-      const token = await getAccessToken();
-      if (!token) { if (!cancelled) setStatus('denied'); return; }
-      const allowed = await checkSubscription(token);
-      if (!cancelled) setStatus(allowed ? 'allowed' : 'denied');
+      const outcome = await verifySubscription();
+      if (cancelled) return;
+      if (outcome === 'allowed') {
+        setStatus('allowed');
+      } else if (outcome === 'denied') {
+        setStatus('denied');
+      }
+      // 'retry' : erreur transitoire hors période de grâce — on conserve
+      // l'écran courant (chargement au démarrage, app si déjà admis) et
+      // on retentera au prochain tick, jamais de mur sur une panne réseau.
     };
     verify();
     const interval = setInterval(verify, 5 * 60 * 1000);
