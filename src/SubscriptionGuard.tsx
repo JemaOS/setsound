@@ -8,7 +8,8 @@ import React, { useState, useEffect } from 'react';
 // tenter de rafraîchir le token. Cette version :
 //   1. distingue "pas d'abonnement" (mur justifié) de "token expiré"
 //      (401/403 -> tentative de refresh) et d'"erreur réseau" (pas de mur) ;
-//   2. appelle POST /v1/connect/auth/refresh sur un 401, puis retente ;
+//   2. appelle POST /v1/connect/refreshtoken (avec le refresh_token) sur
+//      un 401, puis retente ;
 //   3. permet l'usage HORS-LIGNE des PWA après une licence vérifiée :
 //      grace de OFFLINE_GRACE_DAYS jours sans internet, renouvelée à
 //      chaque check en ligne (et révoquée si le serveur confirme "pas
@@ -40,8 +41,9 @@ const AUTH_URL = IS_SSO_HOST
   ? SSO_URL
   : `${window.location.origin}/auth`;
 
-// Route de refresh du backend connect (404 -> fallback reconnexion).
-const REFRESH_URL = `${API_BASE}/v1/connect/auth/refresh`;
+// Route de refresh du backend connect : POST { refresh_token } ->
+// { access_token, refresh_token } (rotation 24 h / 7 j).
+const REFRESH_URL = `${API_BASE}/v1/connect/refreshtoken`;
 
 const GRACE_KEY = 'jemaos_sub_ok_until';
 // Tolérance hors-ligne : après une vérification réussie, l'abonnement est
@@ -56,6 +58,8 @@ declare global {
   interface Window {
     getJemaOSToken?: () => Promise<string | null>;
     jemaosToken?: string;
+    getJemaOSRefreshToken?: () => Promise<string | null>;
+    jemaosRefreshToken?: string;
   }
 }
 
@@ -185,29 +189,74 @@ async function checkSubscription(token: string): Promise<CheckResult> {
   }
 }
 
-// Tente d'obtenir un token frais auprès du backend. Le serveur peut soit
-// poser un nouveau cookie (credentials: 'include'), soit renvoyer le token
-// en JSON (alors stocké en sessionStorage).
+// Cherche le refresh token : pont OEM (getJemaOSRefreshToken), puis cookie
+// partagé .jemaos.com, window.jemaosRefreshToken, session/localStorage.
+function getRefreshTokenFromStores(): string | null {
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'jemaos_refresh_token' && value) {
+      return value;
+    }
+  }
+  if (window.jemaosRefreshToken) {
+    return window.jemaosRefreshToken;
+  }
+  try {
+    const t = sessionStorage.getItem('jemaos_refresh_token');
+    if (t) return t;
+  } catch {}
+  try {
+    const t = localStorage.getItem('jemaos_refresh_token');
+    if (t) return t;
+  } catch {}
+  return null;
+}
+
+// Tente d'obtenir un token frais auprès du backend : POST
+// /v1/connect/refreshtoken { refresh_token } -> { access_token,
+// refresh_token } (rotation 24 h / 7 j). Les nouveaux jetons sont stockés
+// en sessionStorage ET propagés dans le cookie partagé .jemaos.com pour
+// les autres PWA. Renvoie false si aucun refresh token n'est disponible.
 async function tryRefreshToken(): Promise<boolean> {
+  let refreshToken: string | null = null;
+  if (window.getJemaOSRefreshToken) {
+    try {
+      const t = await window.getJemaOSRefreshToken();
+      if (t) refreshToken = t;
+    } catch {
+      // fall through
+    }
+  }
+  if (!refreshToken) {
+    refreshToken = getRefreshTokenFromStores();
+  }
+  if (!refreshToken) return false;
+
   try {
     const res = await fetch(REFRESH_URL, {
       method: 'POST',
-      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': API_KEY,
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ refresh_token: refreshToken }),
     });
     if (!res.ok) return false;
-    try {
-      const data = await res.json();
-      const t = data?.access_token || data?.accessToken || data?.token;
-      if (typeof t === 'string' && t) {
-        sessionStorage.setItem('jemaos_access_token', t);
-      }
-    } catch {
-      // Pas de corps JSON : le nouveau cookie suffit.
+
+    const data = await res.json();
+    const t = data?.access_token || data?.accessToken || data?.token;
+    if (typeof t !== 'string' || !t) return false;
+    sessionStorage.setItem('jemaos_access_token', t);
+    // Cookie partagé : les autres PWA JemaOS liront directement le
+    // nouvel access token (même session, même appareil).
+    document.cookie = `jemaos_access_token=${t}; Domain=.jemaos.com; Path=/; Secure; SameSite=Lax; Max-Age=86400`;
+
+    const rt = data?.refresh_token || data?.refreshToken;
+    if (typeof rt === 'string' && rt) {
+      sessionStorage.setItem('jemaos_refresh_token', rt);
+      try { localStorage.setItem('jemaos_refresh_token', rt); } catch {}
+      document.cookie = `jemaos_refresh_token=${rt}; Domain=.jemaos.com; Path=/; Secure; SameSite=Lax; Max-Age=604800`;
     }
     return true;
   } catch {
