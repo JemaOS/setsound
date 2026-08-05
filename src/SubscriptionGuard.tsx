@@ -518,6 +518,20 @@ function ReconnectScreen({ appName }: { appName: string }) {
     return () => { cancelled = true; };
   }, [returnTo]);
 
+  // Échec de la reconnexion silencieuse : on affiche le mur classique
+  // DIRECTEMENT (pas de carte imbriquée — rendu identique à l'écran
+  // d'abonnement, cf. Nephtys).
+  if (failed) {
+    return (
+      <UpgradeScreen
+        appName={appName}
+        onReconnect={handleReconnect}
+        reconnecting={reconnecting}
+        reconnectError={reconnectError}
+      />
+    );
+  }
+
   return (
     <div style={{
       display: 'flex',
@@ -543,33 +557,22 @@ function ReconnectScreen({ appName }: { appName: string }) {
         <div style={{ marginBottom: '2rem' }}>
           <JemaOSLogo />
         </div>
-        {failed ? (
-          <UpgradeScreen
-            appName={appName}
-            onReconnect={handleReconnect}
-            reconnecting={reconnecting}
-            reconnectError={reconnectError}
-          />
-        ) : (
-          <>
-            <h1 style={{
-              fontSize: '1.5rem',
-              fontWeight: 700,
-              margin: '0 0 0.75rem',
-              color: '#0f172a',
-            }}>
-              Reconnexion en cours…
-            </h1>
-            <p style={{
-              fontSize: '1rem',
-              color: '#475569',
-              margin: 0,
-              lineHeight: 1.6,
-            }}>
-              Vérification de votre session JemaOS. Vous allez être redirigé automatiquement.
-            </p>
-          </>
-        )}
+        <h1 style={{
+          fontSize: '1.5rem',
+          fontWeight: 700,
+          margin: '0 0 0.75rem',
+          color: '#0f172a',
+        }}>
+          Reconnexion en cours…
+        </h1>
+        <p style={{
+          fontSize: '1rem',
+          color: '#475569',
+          margin: 0,
+          lineHeight: 1.6,
+        }}>
+          Vérification de votre session JemaOS. Vous allez être redirigé automatiquement.
+        </p>
       </div>
     </div>
   );
