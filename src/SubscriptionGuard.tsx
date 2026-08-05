@@ -15,7 +15,8 @@ import React, { useState, useEffect } from 'react';
 //      d'abonnement"). La grace vit dans le stockage du PWA, donc par
 //      compte utilisateur de l'appareil ;
 //   4. n'affiche le mur que sur "pas d'abonnement" confirmé ou après
-//      refresh impossible, avec un bouton "Se reconnecter" vers le SSO ;
+//      refresh impossible, avec un bouton "Se reconnecter" INTERNE à
+//      l'app (nouvelle vérification immédiate, jamais de lien externe) ;
 //   5. reconnexion AUTOMATIQUE sur L'URL PROPRE à chaque app : token
 //      rejeté + refresh impossible -> redirection vers /auth SUR LE
 //      DOMAINE DE L'APP (page rendue par ce guard, au-dessus du routeur),
@@ -317,7 +318,12 @@ function LockIcon() {
   );
 }
 
-function UpgradeScreen({ appName }: { appName: string }) {
+function UpgradeScreen({ appName, onReconnect, reconnecting = false, reconnectError = false }: {
+  appName: string;
+  onReconnect?: () => void;
+  reconnecting?: boolean;
+  reconnectError?: boolean;
+}) {
   const reconnectUrl = `${AUTH_URL}?return_to=${encodeURIComponent(window.location.href)}`;
   return (
     <div style={{
@@ -390,22 +396,53 @@ function UpgradeScreen({ appName }: { appName: string }) {
             >
               Passer à Pro
             </a>
-            <a
-              href={reconnectUrl}
-              style={{
-                display: 'inline-block',
-                background: 'transparent',
-                color: '#4f46e5',
-                padding: '0.6rem 1.5rem',
-                borderRadius: '9999px',
-                textDecoration: 'none',
-                fontSize: '0.95rem',
-                fontWeight: 600,
-                border: '1px solid rgba(79, 70, 229, 0.4)',
-              }}
-            >
-              Se reconnecter
-            </a>
+            {IS_SSO_HOST ? (
+              // Sur l'hôte SSO uniquement : /auth est sa propre page de
+              // connexion, le lien est interne à Nephtys.
+              <a
+                href={reconnectUrl}
+                style={{
+                  display: 'inline-block',
+                  background: 'transparent',
+                  color: '#4f46e5',
+                  padding: '0.6rem 1.5rem',
+                  borderRadius: '9999px',
+                  textDecoration: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  border: '1px solid rgba(79, 70, 229, 0.4)',
+                }}
+              >
+                Se reconnecter
+              </a>
+            ) : (
+              // Dans les PWA : reconnexion INTERNE, jamais de lien vers une
+              // autre app. Nouvelle vérification immédiate (cookie, jeton
+              // OEM via getJemaOSToken, refresh backend).
+              <button
+                type="button"
+                onClick={onReconnect}
+                disabled={reconnecting}
+                style={{
+                  background: 'transparent',
+                  color: '#4f46e5',
+                  padding: '0.6rem 1.5rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  border: '1px solid rgba(79, 70, 229, 0.4)',
+                  cursor: reconnecting ? 'wait' : 'pointer',
+                  opacity: reconnecting ? 0.6 : 1,
+                }}
+              >
+                {reconnecting ? 'Reconnexion…' : 'Se reconnecter'}
+              </button>
+            )}
+            {reconnectError && !reconnecting && !IS_SSO_HOST && (
+              <p style={{ color: '#dc2626', fontSize: '0.85rem', margin: 0 }}>
+                La reconnexion a échoué. Réessayez dans un instant.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -440,13 +477,30 @@ function LoadingScreen() {
 
 // Page /auth INTERNE à l'app : tente une reconnexion silencieuse (refresh
 // du token) puis ramène vers return_to — l'utilisateur ne quitte jamais le
-// domaine de l'app. Un écran d'erreur n'apparaît qu'en cas d'échec, avec
-// un lien MANUEL vers le SSO (seul cas de sortie de l'app, à la demande
-// explicite de l'utilisateur).
-function ReconnectScreen() {
+// domaine de l'app. En cas d'échec, le mur classique "Passer à Pro /
+// Se reconnecter" s'affiche, avec une reconnexion INTERNE (jamais de lien
+// vers une autre app).
+function ReconnectScreen({ appName }: { appName: string }) {
   const [failed, setFailed] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
+  const [reconnectError, setReconnectError] = useState(false);
   const returnTo = getSafeReturnTo();
-  const ssoUrl = `${SSO_URL}?return_to=${encodeURIComponent(window.location.href)}`;
+
+  // Reconnexion interne depuis l'écran d'échec : nouvelle vérification
+  // immédiate (cookie, jeton OEM via getJemaOSToken, refresh backend),
+  // puis retour à l'app si le jeton est de nouveau valide.
+  const handleReconnect = async () => {
+    setReconnecting(true);
+    setReconnectError(false);
+    const outcome = await verifySubscription();
+    if (outcome === 'allowed') {
+      clearReauthAttempt();
+      window.location.replace(returnTo);
+    } else {
+      setReconnecting(false);
+      setReconnectError(true);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -490,58 +544,12 @@ function ReconnectScreen() {
           <JemaOSLogo />
         </div>
         {failed ? (
-          <>
-            <h1 style={{
-              fontSize: '1.5rem',
-              fontWeight: 700,
-              margin: '0 0 0.75rem',
-              color: '#0f172a',
-            }}>
-              Session expirée
-            </h1>
-            <p style={{
-              fontSize: '1rem',
-              color: '#475569',
-              margin: '0 0 2rem',
-              lineHeight: 1.6,
-            }}>
-              La reconnexion automatique a échoué. Connectez-vous à votre compte JemaOS pour continuer.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center' }}>
-              <a
-                href={ssoUrl}
-                style={{
-                  display: 'inline-block',
-                  background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                  color: '#fff',
-                  padding: '0.875rem 2.5rem',
-                  borderRadius: '9999px',
-                  textDecoration: 'none',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  boxShadow: '0 10px 25px -5px rgba(79, 70, 229, 0.45)',
-                }}
-              >
-                Se connecter avec JemaOS
-              </a>
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                style={{
-                  background: 'transparent',
-                  color: '#4f46e5',
-                  padding: '0.6rem 1.5rem',
-                  borderRadius: '9999px',
-                  fontSize: '0.95rem',
-                  fontWeight: 600,
-                  border: '1px solid rgba(79, 70, 229, 0.4)',
-                  cursor: 'pointer',
-                }}
-              >
-                Réessayer
-              </button>
-            </div>
-          </>
+          <UpgradeScreen
+            appName={appName}
+            onReconnect={handleReconnect}
+            reconnecting={reconnecting}
+            reconnectError={reconnectError}
+          />
         ) : (
           <>
             <h1 style={{
@@ -574,11 +582,28 @@ interface SubscriptionGuardProps {
 
 export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ appName, children }) => {
   const [status, setStatus] = useState<'loading' | 'allowed' | 'denied'>('loading');
+  const [reconnecting, setReconnecting] = useState(false);
+  const [reconnectError, setReconnectError] = useState(false);
   // Page /auth propre à l'app, rendue par ce guard AU-DESSUS du routeur :
   // la reconnexion se fait sans jamais quitter le domaine de l'app.
   // L'hôte SSO (Nephtys) a sa propre page /auth via son routeur.
   const onAuthPath =
     !IS_SSO_HOST && window.location.pathname.replace(/\/+$/, '') === '/auth';
+
+  // Reconnexion INTERNE depuis le mur : nouvelle vérification immédiate
+  // (cookie, jeton OEM via getJemaOSToken, refresh backend) sans quitter
+  // l'app ni afficher de lien vers une autre application.
+  const handleReconnect = async () => {
+    setReconnecting(true);
+    setReconnectError(false);
+    const outcome = await verifySubscription();
+    if (outcome === 'allowed') {
+      setStatus('allowed');
+    } else {
+      setReconnecting(false);
+      setReconnectError(true);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -613,9 +638,18 @@ export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ appName, c
     return () => { cancelled = true; clearInterval(interval); };
   }, [onAuthPath]);
 
-  if (onAuthPath) return <ReconnectScreen />;
+  if (onAuthPath) return <ReconnectScreen appName={appName} />;
   if (status === 'loading') return <LoadingScreen />;
-  if (status === 'denied') return <UpgradeScreen appName={appName} />;
+  if (status === 'denied') {
+    return (
+      <UpgradeScreen
+        appName={appName}
+        onReconnect={handleReconnect}
+        reconnecting={reconnecting}
+        reconnectError={reconnectError}
+      />
+    );
+  }
   return <>{children}</>;
 };
 
