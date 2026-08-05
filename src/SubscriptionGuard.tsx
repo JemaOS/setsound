@@ -41,6 +41,11 @@ const AUTH_URL = IS_SSO_HOST
   ? SSO_URL
   : `${window.location.origin}/auth`;
 
+// Portail d'authentification JemaOS (jema-auth) : c'est là que l'OS stocke
+// les jetons de session (localStorage) après le login. Le PWA les récupère
+// via iframe cachée + postMessage (jemaos_token_request/response).
+const AUTH_PORTAL_URL = 'https://auth-app.jematech.fr';
+
 // Route de refresh du backend connect : POST { refresh_token } ->
 // { access_token, refresh_token } (rotation 24 h / 7 j).
 const REFRESH_URL = `${API_BASE}/v1/connect/refreshtoken`;
@@ -95,6 +100,13 @@ async function getAccessToken(exclude?: string): Promise<string | null> {
     const sessionToken = sessionStorage.getItem('jemaos_access_token');
     if (sessionToken && sessionToken !== exclude) return sessionToken;
   } catch {}
+  // Portail jema-auth (iframe + postMessage) : récupère les jetons de la
+  // session OS (access + refresh) quand aucune autre source n'en a.
+  const portal = await requestTokensFromPortal();
+  if (portal.accessToken && portal.accessToken !== exclude) {
+    storePortalTokens(portal.accessToken, portal.refreshToken);
+    return portal.accessToken;
+  }
   return null;
 }
 
@@ -169,6 +181,91 @@ function getSafeReturnTo(): string {
   }
 }
 
+// Iframe cachée vers le portail jema-auth, chargée une seule fois à la
+// demande. Renvoie null si le portail est injoignable (hors ligne...).
+let portalIframePromise: Promise<HTMLIFrameElement | null> | null = null;
+
+function loadPortalIframe(): Promise<HTMLIFrameElement | null> {
+  if (portalIframePromise) return portalIframePromise;
+  portalIframePromise = new Promise((resolve) => {
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.setAttribute('aria-hidden', 'true');
+      const timeout = setTimeout(() => resolve(null), 8000);
+      iframe.onload = () => { clearTimeout(timeout); resolve(iframe); };
+      iframe.onerror = () => { clearTimeout(timeout); resolve(null); };
+      iframe.src = AUTH_PORTAL_URL;
+      document.body.appendChild(iframe);
+    } catch {
+      resolve(null);
+    }
+  });
+  return portalIframePromise;
+}
+
+// Demande les jetons au portail jema-auth via postMessage
+// (jemaos_token_request -> jemaos_token_response { token, refreshToken }).
+// Seules les réponses venant de l'origine du portail sont acceptées.
+// Timeout 2.5 s après chargement de l'iframe.
+async function requestTokensFromPortal(): Promise<{
+  accessToken: string | null;
+  refreshToken: string | null;
+}> {
+  const empty = { accessToken: null, refreshToken: null };
+  try {
+    const iframe = await loadPortalIframe();
+    if (!iframe || !iframe.contentWindow) return empty;
+    const frameWindow = iframe.contentWindow;
+    return await new Promise((resolve) => {
+      const cleanup = () => {
+        clearTimeout(timeout);
+        window.removeEventListener('message', onMessage);
+      };
+      const timeout = setTimeout(() => { cleanup(); resolve(empty); }, 2500);
+      const onMessage = (event: MessageEvent) => {
+        if (event.origin !== AUTH_PORTAL_URL) return;
+        const data = event.data;
+        if (data && data.type === 'jemaos_token_response') {
+          cleanup();
+          resolve({
+            accessToken:
+              typeof data.token === 'string' && data.token ? data.token : null,
+            refreshToken:
+              typeof data.refreshToken === 'string' && data.refreshToken
+                ? data.refreshToken
+                : null,
+          });
+        }
+      };
+      window.addEventListener('message', onMessage);
+      try {
+        frameWindow.postMessage({ type: 'jemaos_token_request' }, AUTH_PORTAL_URL);
+      } catch {
+        // ignore
+      }
+    });
+  } catch {
+    return empty;
+  }
+}
+
+// Stocke les jetons reçus du portail dans les stores du PWA (le cookie
+// partagé .jemaos.com permet aux autres PWA d'en profiter directement).
+function storePortalTokens(accessToken: string | null, refreshToken: string | null) {
+  if (accessToken) {
+    try { sessionStorage.setItem('jemaos_access_token', accessToken); } catch {}
+    document.cookie = `jemaos_access_token=${accessToken}; Domain=.jemaos.com; Path=/; Secure; SameSite=Lax; Max-Age=86400`;
+  }
+  if (refreshToken) {
+    try {
+      sessionStorage.setItem('jemaos_refresh_token', refreshToken);
+      localStorage.setItem('jemaos_refresh_token', refreshToken);
+    } catch {}
+    document.cookie = `jemaos_refresh_token=${refreshToken}; Domain=.jemaos.com; Path=/; Secure; SameSite=Lax; Max-Age=604800`;
+  }
+}
+
 async function checkSubscription(token: string): Promise<CheckResult> {
   try {
     const res = await fetch(`${API_BASE}/v1/connect/os/subscription`, {
@@ -230,6 +327,15 @@ async function tryRefreshToken(): Promise<boolean> {
   }
   if (!refreshToken) {
     refreshToken = getRefreshTokenFromStores();
+  }
+  if (!refreshToken) {
+    // Dernier recours : le portail jema-auth (iframe) fournit les jetons
+    // issus du login OS, y compris le refresh token.
+    const portal = await requestTokensFromPortal();
+    if (portal.refreshToken) {
+      refreshToken = portal.refreshToken;
+      storePortalTokens(portal.accessToken, portal.refreshToken);
+    }
   }
   if (!refreshToken) return false;
 
