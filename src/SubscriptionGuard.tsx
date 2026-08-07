@@ -738,14 +738,7 @@ interface SubscriptionGuardProps {
 }
 
 export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ appName, children }) => {
-  // Démarrage instantané quand une vérification a réussi récemment (grâce de
-  // 7 jours) : l'app s'affiche immédiatement et la vérification en ligne se
-  // fait en arrière-plan (stale-while-revalidate). Une révocation serveur
-  // ('denied') affiche quand même le mur au premier tick ; l'expiration de la
-  // grâce ramène vers /auth via 'reauth'.
-  const [status, setStatus] = useState<'loading' | 'allowed' | 'denied'>(
-    () => inGracePeriod() ? 'allowed' : 'loading'
-  );
+  const [status, setStatus] = useState<'loading' | 'allowed' | 'denied'>('loading');
   const [reconnecting, setReconnecting] = useState(false);
   const [reconnectError, setReconnectError] = useState(false);
   // Page /auth propre à l'app, rendue par ce guard AU-DESSUS du routeur :
