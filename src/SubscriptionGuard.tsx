@@ -30,16 +30,15 @@ import React, { useState, useEffect } from 'react';
 const API_BASE = 'https://test-connect-api.jematech.fr';
 const API_KEY = 'e58492a3-b452-4197-9f4a-deb7915b9446';
 
-// Portail SSO central (authentification JemaOS). Sur l'hôte SSO lui-même,
-// /auth est la page de connexion du routeur de l'app.
-const SSO_URL = 'https://nephtys.jemaos.com/auth';
+// true uniquement sur l'hôte SSO (nephtys.jemaos.com) — sert aux branches
+// spécifiques au portail central plus bas (UI, détection de route /auth).
 const IS_SSO_HOST = window.location.hostname === 'nephtys.jemaos.com';
 
 // Page de reconnexion : chaque app utilise SA PROPRE URL (/auth sur son
 // domaine) — l'utilisateur ne quitte jamais l'app pour se reconnecter.
-const AUTH_URL = IS_SSO_HOST
-  ? SSO_URL
-  : `${window.location.origin}/auth`;
+// Note : sur l'hôte SSO, origin + '/auth' vaut déjà
+// 'https://nephtys.jemaos.com/auth', d'où l'absence de cas particulier.
+const AUTH_URL = `${window.location.origin}/auth`;
 
 // Portail d'authentification JemaOS (jema-auth) : c'est là que l'OS stocke
 // les jetons de session (localStorage) après le login. Le PWA les récupère
