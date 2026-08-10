@@ -27,7 +27,7 @@ import React, { useState, useEffect } from 'react';
 //      bug) — jamais de boucle infinie.
 // Fichier partagé : le garder identique dans toutes les apps PWA.
 
-const API_BASE = 'https://test-connect-api.jematech.fr';
+const API_BASE = 'https://connect-api.jematech.fr';
 const API_KEY = 'e58492a3-b452-4197-9f4a-deb7915b9446';
 
 // true uniquement sur l'hôte SSO (nephtys.jemaos.com) — sert aux branches
