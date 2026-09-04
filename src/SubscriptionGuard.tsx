@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// SubscriptionGuard v2 (2026-08-03)
+// SubscriptionGuard v3 (2026-09-04)
 // ---------------------------------
 // Fix "perte de licence après 24 h" : le token JWT (cookie
 // jemaos_access_token) expire après 24 h et la version précédente
@@ -25,6 +25,19 @@ import React, { useState, useEffect } from 'react';
 //      Jamais de rebond visible vers Nephtys. Le mur "Se reconnecter"
 //      n'apparaît que si l'aller-retour a déjà échoué une fois (cas de
 //      bug) — jamais de boucle infinie.
+//   6. v3 — SESSION GÉRÉE PAR L'OS (single owner) : sur JemaOS, l'OS pose
+//      le cookie partagé jemaos_managed=1 en même temps que
+//      jemaos_access_token et est l'UNIQUE rotationneur du refresh token.
+//      La rotation serveur invalide l'ancien refresh token : si les PWA
+//      rotationnaient aussi la même session (refresh token du portail ou
+//      propagé par cookie), elles TUAIENT la session OS (401 "Invalid or
+//      expired session" sur tous les appels système, ex. panneau d'analyse
+//      de sauvegarde). En mode géré : jamais de refresh autonome, jamais
+//      de jetons via l'iframe du portail (autre session), pas de
+//      suppression du cookie posé par l'OS ; sur 401, re-lecture du cookie
+//      après quelques secondes (l'OS peut être en cours de refresh) puis
+//      re-check. Hors JemaOS (navigateur externe), l'ancien comportement
+//      est conservé.
 // Fichier partagé : le garder identique dans toutes les apps PWA.
 
 const API_BASE = 'https://connect-api.jematech.fr';
@@ -81,6 +94,36 @@ function getTokenFromCookie(): string | null {
   return null;
 }
 
+// Session gérée par l'OS JemaOS : l'OS pose ce cookie partagé en même
+// temps que jemaos_access_token. Quand il est présent, l'OS est l'unique
+// propriétaire du refresh token : les PWA ne doivent JAMAIS rotationner
+// la session elles-mêmes (la rotation serveur invalide l'ancien refresh
+// token, ce qui tuait la session OS quand deux consommateurs la
+// rotationnaient en parallèle), ni récupérer les jetons du portail
+// jema-auth (autre session, dont la rotation tuerait aussi l'OS).
+function isOsManagedSession(): boolean {
+  return document.cookie.split(';').some((cookie) => {
+    const [name, value] = cookie.trim().split('=');
+    return name === 'jemaos_managed' && value === '1';
+  });
+}
+
+// Mode géré : attend qu'un NOUVEL access token apparaisse (posé par l'OS
+// après son refresh), quelques tentatives espacées. Renvoie null si rien
+// de neuf n'arrive.
+async function waitForManagedTokenRefresh(
+  staleToken: string
+): Promise<string | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    const token = await getAccessToken(staleToken);
+    if (token && token !== staleToken) {
+      return token;
+    }
+  }
+  return null;
+}
+
 async function getAccessToken(exclude?: string): Promise<string | null> {
   const cookieToken = getTokenFromCookie();
   if (cookieToken && cookieToken !== exclude) return cookieToken;
@@ -101,17 +144,28 @@ async function getAccessToken(exclude?: string): Promise<string | null> {
   } catch {}
   // Portail jema-auth (iframe + postMessage) : récupère les jetons de la
   // session OS (access + refresh) quand aucune autre source n'en a.
-  const portal = await requestTokensFromPortal();
-  if (portal.accessToken && portal.accessToken !== exclude) {
-    storePortalTokens(portal.accessToken, portal.refreshToken);
-    return portal.accessToken;
+  // JAMAIS en mode géré : les jetons du portail appartiennent à la session
+  // web du login, pas à la session OS — les utiliser (et surtout les
+  // rotationner) tuerait l'une des deux sessions.
+  if (!isOsManagedSession()) {
+    const portal = await requestTokensFromPortal();
+    if (portal.accessToken && portal.accessToken !== exclude) {
+      storePortalTokens(portal.accessToken, portal.refreshToken);
+      return portal.accessToken;
+    }
   }
   return null;
 }
 
 // Supprime le cookie rejeté par l'API (best-effort : le domaine exact du
 // Set-Cookie initial est inconnu, on essaie les variantes usuelles).
+// Jamais en mode géré : le cookie est la propriété de l'OS, qui le
+// renouvelle lui-même — le supprimer casserait les autres PWA et masquerait
+// le refresh en cours de l'OS.
 function clearStaleTokenCookie() {
+  if (isOsManagedSession()) {
+    return;
+  }
   const domains: (string | undefined)[] = [
     undefined,
     window.location.hostname,
@@ -314,7 +368,13 @@ function getRefreshTokenFromStores(): string | null {
 // refresh_token } (rotation 24 h / 7 j). Les nouveaux jetons sont stockés
 // en sessionStorage ET propagés dans le cookie partagé .jemaos.com pour
 // les autres PWA. Renvoie false si aucun refresh token n'est disponible.
+// JAMAIS en mode géré : sur JemaOS, l'OS est l'unique rotationneur de la
+// session — rotationner ici invaliderait le refresh token que l'OS
+// s'apprête à utiliser (c'est ce qui tuait la session OS).
 async function tryRefreshToken(): Promise<boolean> {
+  if (isOsManagedSession()) {
+    return false;
+  }
   let refreshToken: string | null = null;
   if (window.getJemaOSRefreshToken) {
     try {
@@ -388,6 +448,25 @@ async function verifySubscription(): Promise<VerifyOutcome> {
     // côté, on tente un refresh, puis on revérifie une fois.
     clearStaleTokenCookie();
     const stale = token;
+    if (isOsManagedSession()) {
+      // Session gérée par l'OS : ne pas rotationner soi-même. L'OS peut
+      // être en cours de refresh (cycle 15 min) : re-lecture du cookie
+      // partagé quelques secondes plus tard, puis re-check.
+      const fresh = await waitForManagedTokenRefresh(stale);
+      if (fresh) {
+        const r2 = await checkSubscription(fresh);
+        if (r2 === 'ok') {
+          markSubscriptionOk();
+          return 'allowed';
+        }
+        if (r2 === 'error') return inGracePeriod() ? 'allowed' : 'retry';
+        if (r2 === 'no-subscription') {
+          clearSubscriptionGrace();
+          return 'denied';
+        }
+      }
+      return inGracePeriod() ? 'allowed' : 'reauth';
+    }
     if (await tryRefreshToken()) {
       token = await getAccessToken(stale);
       if (token) {
@@ -407,7 +486,25 @@ async function verifySubscription(): Promise<VerifyOutcome> {
   }
 
   // Aucun token : la session SSO peut encore être vivante, on tente un
-  // refresh avant de conclure.
+  // refresh avant de conclure. En mode géré, le cookie de l'OS peut ne pas
+  // être encore injecté (PWA ouverte avant la fin de l'injection en début
+  // de session) : on attend un peu une valeur de l'OS avant de conclure.
+  if (isOsManagedSession()) {
+    const managedToken = await waitForManagedTokenRefresh('');
+    if (managedToken) {
+      const r = await checkSubscription(managedToken);
+      if (r === 'ok') {
+        markSubscriptionOk();
+        return 'allowed';
+      }
+      if (r === 'error') return inGracePeriod() ? 'allowed' : 'retry';
+      if (r === 'no-subscription') {
+        clearSubscriptionGrace();
+        return 'denied';
+      }
+    }
+    return inGracePeriod() ? 'allowed' : 'reauth';
+  }
   if (await tryRefreshToken()) {
     token = await getAccessToken();
     if (token) {
