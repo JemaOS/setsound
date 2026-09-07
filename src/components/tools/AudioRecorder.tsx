@@ -5,12 +5,14 @@ import { useState, useRef, useEffect } from 'react';
 import { AudioUtils } from '@/utils/audioUtils';
 import { AudioEncoders } from '@/utils/audioEncoders';
 import { ExportModal } from '@/components/ExportModal';
+import { useI18n } from '@/i18n';
 
 interface AudioRecorderProps {
   audioContext: AudioContext;
 }
 
 export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
+  const { t, lang } = useI18n();
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -87,7 +89,7 @@ export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
       startVisualizer(stream);
     } catch (error) {
       console.error('Error starting recording:', error);
-      alert('Erreur lors de l\'accès au microphone. Vérifiez les permissions.');
+      alert(t('micAccessError'));
     }
   };
 
@@ -234,7 +236,8 @@ export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
       AudioUtils.downloadBlob(blobToDownload, filename);
     } catch (error) {
       console.error("Export failed:", error);
-      alert("Export failed: " + (error instanceof Error ? error.message : String(error)));
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(t('exportFailed', { message: errorMessage }));
     }
     
     setShowExportModal(false);
@@ -299,8 +302,8 @@ export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
     <div className="flex flex-col h-full p-4 sm:p-6 md:p-8 overflow-hidden">
       {/* Header - Responsive */}
       <div className="text-center mb-4 sm:mb-5 md:mb-6">
-        <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">Enregistreur Audio</h1>
-        <p className="text-xs sm:text-sm text-neutral-400">Enregistrez en haute qualité • Visualisation temps réel</p>
+        <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">{t('recorderTitle')}</h1>
+        <p className="text-xs sm:text-sm text-neutral-400">{t('recorderSubtitle')}</p>
       </div>
 
       {/* Main Recording Area - Responsive */}
@@ -367,7 +370,7 @@ export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
             <span className="text-neutral-400 text-xs">
-              {isPaused ? 'En pause' : 'Enregistrement'}
+              {isPaused ? t('paused') : t('recording')}
             </span>
           </div>
         )}
@@ -386,7 +389,7 @@ export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
       {/* Recordings List - Responsive */}
       {recordings.length > 0 && (
         <div className="border-t border-neutral-900 pt-3 sm:pt-4 flex-shrink-0">
-          <h2 className="text-sm sm:text-base font-medium text-neutral-100 mb-2 sm:mb-3">Enregistrements ({recordings.length})</h2>
+          <h2 className="text-sm sm:text-base font-medium text-neutral-100 mb-2 sm:mb-3">{t('recordings', { count: recordings.length })}</h2>
           <div className="space-y-2 max-h-[25vh] sm:max-h-[20vh] overflow-y-auto">
             {recordings.map((recording) => (
               <div
@@ -411,10 +414,10 @@ export const AudioRecorder = ({ audioContext }: AudioRecorderProps) => {
 
                 <div className="flex-1 min-w-0">
                   <div className="text-neutral-100 font-medium truncate">
-                    Enregistrement {recording.date.toLocaleTimeString('fr-FR')}
+                    {t('recordingAt', { time: recording.date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US') })}
                   </div>
                   <div className="text-sm text-neutral-400">
-                    {AudioUtils.formatTime(recording.duration)} • {recording.date.toLocaleDateString('fr-FR')}
+                    {AudioUtils.formatTime(recording.duration)} • {recording.date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US')}
                   </div>
                 </div>
 

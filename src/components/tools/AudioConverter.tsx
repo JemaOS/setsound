@@ -14,6 +14,7 @@ import {
 } from 'mediabunny';
 import { ffmpegConverter } from '@/utils/ffmpegUtils';
 import { initMediaBunny } from '@/utils/mediabunnyConfig';
+import { useI18n } from '@/i18n';
 
 interface AudioConverterProps {
   audioContext: AudioContext;
@@ -41,6 +42,7 @@ const OUTPUT_FORMATS: FormatOption[] = [
 ];
 
 export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterProps) => {
+  const { t } = useI18n();
   useEffect(() => {
     initMediaBunny();
   }, []);
@@ -83,13 +85,13 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
 
   /** Convert a file using FFmpeg WASM and update component state. */
   const convertWithFFmpeg = async (sourceFile: File, format: string, fallback = false): Promise<void> => {
-    setProgressMessage(fallback ? 'Chargement de FFmpeg (fallback)...' : 'Chargement de FFmpeg...');
+    setProgressMessage(fallback ? t('loadingFfmpegFallback') : t('loadingFfmpeg'));
     const blob = await ffmpegConverter.convert(
       sourceFile,
       format,
       (p) => {
         setProgress(p);
-        setProgressMessage(fallback ? 'Conversion en cours (FFmpeg)...' : 'Conversion en cours...');
+        setProgressMessage(fallback ? t('convertingFfmpeg') : t('converting'));
       },
       (msg) => {
         console.log(msg);
@@ -98,7 +100,7 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
 
     setConvertedBlob(blob);
     setProgress(100);
-    setProgressMessage('Conversion terminée !');
+    setProgressMessage(t('conversionComplete'));
     setIsProcessing(false);
   };
 
@@ -111,7 +113,7 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
       setProgress(0);
       setConvertedBlob(null);
 
-      setProgressMessage('Initialisation...');
+      setProgressMessage(t('initializing'));
       
       const formatOption = OUTPUT_FORMATS.find(f => f.id === outputFormat)!;
 
@@ -141,7 +143,7 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
           audioOptions = { ...audioOptions, codec: 'pcm-s16', sampleRate: 44100, numberOfChannels: 2 };
           break;
         default:
-          throw new Error(`Format non supporté: ${outputFormat}`);
+          throw new Error(t('unsupportedFormat', { format: outputFormat }));
       }
 
       const output = new Output({
@@ -149,7 +151,7 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
         format: outputFormatInstance
       });
 
-      setProgressMessage('Configuration...');
+      setProgressMessage(t('configuring'));
       
       const conversion = await Conversion.init({
         input,
@@ -166,27 +168,27 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
 
       conversion.onProgress = (p) => {
         setProgress(Math.round(p * 100));
-        setProgressMessage('Conversion en cours...');
+        setProgressMessage(t('converting'));
       };
 
       await conversion.execute();
 
-      setProgressMessage('Finalisation...');
+      setProgressMessage(t('finalizing'));
       setProgress(90);
 
       if (!target.buffer) {
-        throw new Error("Erreur lors de la conversion: pas de données de sortie");
+        throw new Error(t('conversionNoOutput'));
       }
 
       const blob = new Blob([target.buffer], { type: formatOption.mimeType });
 
       setConvertedBlob(blob);
       setProgress(100);
-      setProgressMessage('Conversion terminée !');
+      setProgressMessage(t('conversionComplete'));
       setIsProcessing(false);
     } catch (err) {
       console.error('Conversion error:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors de la conversion');
+      setError(err instanceof Error ? err.message : t('conversionError'));
       setIsProcessing(false);
     }
   };
@@ -232,10 +234,10 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6 md:mb-8">
         <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">
-          Convertisseur Audio
+          {t('converterTitle')}
         </h1>
         <p className="text-xs sm:text-sm text-neutral-400">
-          Convertissez vos fichiers audio vers différents formats
+          {t('converterSubtitle')}
         </p>
       </div>
 
@@ -253,10 +255,10 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
                 <path d="M32 16v32M16 32h32" strokeLinecap="round"/>
                 <circle cx="32" cy="32" r="20" strokeLinecap="round"/>
               </svg>
-              <h3 className="text-xl font-medium text-neutral-100 mb-2">Glissez-déposez un fichier audio</h3>
-              <p className="text-neutral-400 mb-6">ou cliquez pour parcourir</p>
+              <h3 className="text-xl font-medium text-neutral-100 mb-2">{t('dropAudioFile')}</h3>
+              <p className="text-neutral-400 mb-6">{t('orClickToBrowse')}</p>
               <button className="px-6 py-3 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
-                Sélectionner un fichier
+                {t('selectFile')}
               </button>
             </div>
             <input
@@ -274,11 +276,11 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
           {/* File Info Card */}
           <div className="bg-neutral-900 rounded-lg p-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-medium text-neutral-100">Fichier sélectionné</h2>
+              <h2 className="text-sm font-medium text-neutral-100">{t('selectedFile')}</h2>
               <button
                 onClick={handleReset}
                 className="text-neutral-400 hover:text-neutral-100 transition-colors"
-                title="Changer de fichier"
+                title={t('changeFile')}
               >
                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 4l12 12M16 4L4 16" strokeLinecap="round"/>
@@ -303,7 +305,7 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
 
           {/* Format Selection */}
           <div className="bg-neutral-900 rounded-lg p-3 flex-shrink-0">
-            <h2 className="text-sm font-medium text-neutral-100 mb-2">Format de sortie</h2>
+            <h2 className="text-sm font-medium text-neutral-100 mb-2">{t('outputFormat')}</h2>
             <div className="grid grid-cols-6 gap-1.5">
               {OUTPUT_FORMATS.map((format) => (
                 <button
@@ -368,16 +370,16 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-500">
                   <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                <h2 className="text-sm font-medium text-neutral-100">Conversion réussie !</h2>
+                <h2 className="text-sm font-medium text-neutral-100">{t('conversionSuccessful')}</h2>
               </div>
               
               <div className="flex items-center gap-4 p-2 bg-neutral-950 rounded-lg">
                 <div className="flex-1">
-                  <p className="text-neutral-400 text-xs">Taille du fichier converti</p>
+                  <p className="text-neutral-400 text-xs">{t('convertedFileSize')}</p>
                   <p className="text-neutral-100 text-sm font-medium">{formatFileSize(convertedBlob.size)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-neutral-400 text-xs">Format</p>
+                  <p className="text-neutral-400 text-xs">{t('format')}</p>
                   <p className="text-primary-500 text-sm font-medium uppercase">{outputFormat}</p>
                 </div>
               </div>
@@ -398,14 +400,14 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
                 {isProcessing ? (
                   <>
                     <div className="spinner w-4 h-4"></div>
-                    <span>Conversion en cours...</span>
+                    <span>{t('converting')}</span>
                   </>
                 ) : (
                   <>
                     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 10h12M12 6l4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    <span>Convertir en {outputFormat.toUpperCase()}</span>
+                    <span>{t('convertTo', { format: outputFormat.toUpperCase() })}</span>
                   </>
                 )}
               </button>
@@ -418,7 +420,7 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
                   <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M4 4l12 12M16 4L4 16" strokeLinecap="round"/>
                   </svg>
-                  <span>Nouveau fichier</span>
+                  <span>{t('newFile')}</span>
                 </button>
                 <button
                   onClick={handleDownload}
@@ -428,7 +430,7 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
                     <path d="M10 3v11M10 14l-4-4M10 14l4-4" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M4 17h12" strokeLinecap="round"/>
                   </svg>
-                  <span>Télécharger</span>
+                  <span>{t('download')}</span>
                 </button>
               </>
             )}

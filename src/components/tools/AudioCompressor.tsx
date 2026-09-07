@@ -12,6 +12,7 @@ import {
   ALL_FORMATS
 } from 'mediabunny';
 import { initMediaBunny } from '@/utils/mediabunnyConfig';
+import { useI18n } from '@/i18n';
 
 interface AudioCompressorProps {
   audioContext: AudioContext;
@@ -32,6 +33,7 @@ const BITRATE_OPTIONS: BitrateOption[] = [
 ];
 
 export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressorProps) => {
+  const { t } = useI18n();
   useEffect(() => {
     initMediaBunny();
   }, []);
@@ -80,7 +82,7 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
       setProgress(0);
       setCompressedBlob(null);
 
-      setProgressMessage('Initialisation...');
+      setProgressMessage(t('initializing'));
       
       const input = new Input({
         source: new BlobSource(file),
@@ -93,7 +95,7 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
         format: new Mp3OutputFormat()
       });
 
-      setProgressMessage('Configuration...');
+      setProgressMessage(t('configuring'));
       
       const conversion = await Conversion.init({
         input,
@@ -107,27 +109,27 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
 
       conversion.onProgress = (p) => {
         setProgress(Math.round(p * 100));
-        setProgressMessage('Compression en cours...');
+        setProgressMessage(t('compressing'));
       };
 
       await conversion.execute();
 
-      setProgressMessage('Finalisation...');
+      setProgressMessage(t('finalizing'));
       setProgress(90);
 
       if (!target.buffer) {
-        throw new Error("Erreur lors de la compression: pas de données de sortie");
+        throw new Error(t('compressionNoOutput'));
       }
 
       const blob = new Blob([target.buffer], { type: 'audio/mpeg' });
 
       setCompressedBlob(blob);
       setProgress(100);
-      setProgressMessage('Compression terminée !');
+      setProgressMessage(t('compressionComplete'));
       setIsProcessing(false);
     } catch (err) {
       console.error('Compression error:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors de la compression');
+      setError(err instanceof Error ? err.message : t('compressionError'));
       setIsProcessing(false);
     }
   };
@@ -178,10 +180,10 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6 md:mb-8">
         <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">
-          Compresseur Audio
+          {t('compressorTitle')}
         </h1>
         <p className="text-xs sm:text-sm text-neutral-400">
-          Réduisez la taille de vos fichiers audio en ajustant le bitrate
+          {t('compressorSubtitle')}
         </p>
       </div>
 
@@ -199,10 +201,10 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
                 <path d="M32 16v32M16 32h32" strokeLinecap="round"/>
                 <circle cx="32" cy="32" r="20" strokeLinecap="round"/>
               </svg>
-              <h3 className="text-xl font-medium text-neutral-100 mb-2">Glissez-déposez un fichier audio</h3>
-              <p className="text-neutral-400 mb-6">ou cliquez pour parcourir</p>
+              <h3 className="text-xl font-medium text-neutral-100 mb-2">{t('dropAudioFile')}</h3>
+              <p className="text-neutral-400 mb-6">{t('orClickToBrowse')}</p>
               <button className="px-6 py-3 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
-                Sélectionner un fichier
+                {t('selectFile')}
               </button>
             </div>
             <input
@@ -220,11 +222,11 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
           {/* File Info Card */}
           <div className="bg-neutral-900 rounded-lg p-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-medium text-neutral-100">Fichier sélectionné</h2>
+              <h2 className="text-sm font-medium text-neutral-100">{t('selectedFile')}</h2>
               <button
                 onClick={handleReset}
                 className="text-neutral-400 hover:text-neutral-100 transition-colors"
-                title="Changer de fichier"
+                title={t('changeFile')}
               >
                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 4l12 12M16 4L4 16" strokeLinecap="round"/>
@@ -242,14 +244,14 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-neutral-100 text-sm font-medium truncate">{file.name}</p>
-                <p className="text-neutral-400 text-xs">Taille originale: {formatFileSize(file.size)}</p>
+                <p className="text-neutral-400 text-xs">{t('originalSize', { size: formatFileSize(file.size) })}</p>
               </div>
             </div>
           </div>
 
           {/* Bitrate Selection - Compact Grid */}
           <div className="bg-neutral-900 rounded-lg p-3 flex-shrink-0">
-            <h2 className="text-sm font-medium text-neutral-100 mb-2">Niveau de compression</h2>
+            <h2 className="text-sm font-medium text-neutral-100 mb-2">{t('compressionLevel')}</h2>
             <div className="grid grid-cols-5 gap-1.5">
               {BITRATE_OPTIONS.map((option) => (
                 <button
@@ -315,20 +317,20 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-500">
                   <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                <h2 className="text-sm font-medium text-neutral-100">Compression réussie !</h2>
+                <h2 className="text-sm font-medium text-neutral-100">{t('compressionSuccessful')}</h2>
               </div>
               
               <div className="grid grid-cols-3 gap-2 p-2 bg-neutral-950 rounded-lg">
                 <div className="text-center">
-                  <p className="text-neutral-400 text-xs">Avant</p>
+                  <p className="text-neutral-400 text-xs">{t('before')}</p>
                   <p className="text-neutral-100 text-sm font-medium">{formatFileSize(file.size)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-neutral-400 text-xs">Après</p>
+                  <p className="text-neutral-400 text-xs">{t('after')}</p>
                   <p className="text-neutral-100 text-sm font-medium">{formatFileSize(compressedBlob.size)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-neutral-400 text-xs">Réduction</p>
+                  <p className="text-neutral-400 text-xs">{t('reduction')}</p>
                   <p className={`text-sm font-medium ${
                     compressedBlob.size < file.size ? 'text-green-500' : 'text-orange-500'
                   }`}>
@@ -353,14 +355,14 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
                 {isProcessing ? (
                   <>
                     <div className="spinner w-4 h-4"></div>
-                    <span>Compression en cours...</span>
+                    <span>{t('compressing')}</span>
                   </>
                 ) : (
                   <>
                     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 8h12M4 12h12M7 4v12M13 4v12" strokeLinecap="round"/>
                     </svg>
-                    <span>Compresser à {bitrate} kbps</span>
+                    <span>{t('compressAt', { bitrate })}</span>
                   </>
                 )}
               </button>
@@ -373,7 +375,7 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
                   <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M4 4l12 12M16 4L4 16" strokeLinecap="round"/>
                   </svg>
-                  <span>Nouveau fichier</span>
+                  <span>{t('newFile')}</span>
                 </button>
                 <button
                   onClick={handleDownload}
@@ -383,7 +385,7 @@ export const AudioCompressor = ({ audioContext: _audioContext }: AudioCompressor
                     <path d="M10 3v11M10 14l-4-4M10 14l4-4" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M4 17h12" strokeLinecap="round"/>
                   </svg>
-                  <span>Télécharger</span>
+                  <span>{t('download')}</span>
                 </button>
               </>
             )}

@@ -2,6 +2,8 @@
 // Distributed under the license specified in the root directory of this project.
 
 import { ToolType } from '@/types';
+import { useI18n } from '@/i18n';
+import { LanguageSelector } from '@/components/LanguageSelector';
 
 interface SidebarProps {
   currentTool: ToolType;
@@ -13,7 +15,7 @@ interface SidebarProps {
 const tools = [
   {
     id: 'cutter' as ToolType,
-    name: 'Coupeur',
+    name: 'toolCutter',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="2" y="8" width="7" height="4" rx="1" strokeLinecap="round"/>
@@ -25,7 +27,7 @@ const tools = [
   },
   {
     id: 'joiner' as ToolType,
-    name: 'Fusionneur',
+    name: 'toolJoiner',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="3" y="3" width="6" height="6" rx="1" strokeLinecap="round"/>
@@ -37,7 +39,7 @@ const tools = [
   },
   {
     id: 'bpm' as ToolType,
-    name: 'BPM Détecteur',
+    name: 'toolBpm',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M3 10h3l2-4 2 8 2-4h3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -47,7 +49,7 @@ const tools = [
   },
   {
     id: 'recorder' as ToolType,
-    name: 'Enregistreur',
+    name: 'toolRecorder',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <circle cx="10" cy="7" r="3" strokeLinecap="round"/>
@@ -58,7 +60,7 @@ const tools = [
   },
   {
     id: 'converter' as ToolType,
-    name: 'Convertisseur',
+    name: 'toolConverter',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M4 10h12M12 6l4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -68,7 +70,7 @@ const tools = [
   },
   {
     id: 'compressor' as ToolType,
-    name: 'Compresseur',
+    name: 'toolCompressor',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="3" y="6" width="14" height="8" rx="1" strokeLinecap="round"/>
@@ -80,6 +82,7 @@ const tools = [
 ];
 
 export const Sidebar = ({ currentTool, onToolChange, isOpen, onToggle }: SidebarProps) => {
+  const { t } = useI18n();
   return (
     <aside className={`
       w-full sm:w-[240px] md:w-[260px] lg:w-[280px]
@@ -98,13 +101,14 @@ export const Sidebar = ({ currentTool, onToolChange, isOpen, onToggle }: Sidebar
               <circle cx="14" cy="16" r="1.5" fill="white"/>
             </svg>
             <span className="text-lg sm:text-xl font-semibold text-primary-500">setsound</span>
+            <LanguageSelector className="ml-0.5 sm:ml-1" />
           </div>
           
           {/* Toggle button - Touch-friendly - Always visible */}
           <button
             onClick={onToggle}
             className="w-10 h-10 sm:w-9 sm:h-9 md:w-8 md:h-8 rounded-lg bg-neutral-800/50 hover:bg-neutral-700/70 active:bg-neutral-700 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-            title="Masquer le panneau"
+            title={t('hidePanel')}
           >
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="sm:w-4 sm:h-4">
               <path d="M10 3L5 8l5 5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -139,7 +143,7 @@ export const Sidebar = ({ currentTool, onToolChange, isOpen, onToggle }: Sidebar
             <div className="w-5 h-5 sm:w-5 sm:h-5 flex-shrink-0">
               {tool.icon}
             </div>
-            <span className="font-medium text-sm sm:text-base">{tool.name}</span>
+            <span className="font-medium text-sm sm:text-base">{t(tool.name)}</span>
           </button>
         ))}
       </nav>

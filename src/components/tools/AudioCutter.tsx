@@ -9,6 +9,7 @@ import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useHistory } from '@/hooks/useHistory';
 import { AudioSegment, CutterHistoryState } from '@/types';
 import { ExportModal } from '@/components/ExportModal';
+import { useI18n } from '@/i18n';
 // Note: needsConversion is handled internally by AudioUtils.loadAudioFile
 
 interface AudioCutterProps {
@@ -16,6 +17,7 @@ interface AudioCutterProps {
 }
 
 export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
+  const { t } = useI18n();
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -222,7 +224,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
       
       // Show user-friendly error message
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Erreur lors du chargement du fichier: ${errorMessage}`);
+      alert(t('fileLoadError', { message: errorMessage }));
     }
   };
 
@@ -231,7 +233,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
 
     const cutTime = currentTime;
     if (cutTime <= 0.01 || cutTime >= duration - 0.01) {
-      alert('Position de découpe invalide');
+      alert(t('invalidCutPosition'));
       return;
     }
 
@@ -239,7 +241,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
       setIsProcessing(true);
 
       // Find which segment contains the cut point
-      let newSegments: AudioSegment[] = [];
+      const newSegments: AudioSegment[] = [];
       let cutMade = false;
 
       for (const segment of segments) {
@@ -281,7 +283,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
       setIsProcessing(false);
     } catch (error) {
       console.error('Error cutting:', error);
-      alert('Erreur lors de la découpe');
+      alert(t('cutError'));
       setIsProcessing(false);
     }
   };
@@ -294,7 +296,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
     const newSegments = segments.filter(seg => seg.id !== segmentId);
     
     if (newSegments.length === 0) {
-      alert('Vous devez garder au moins un segment');
+      alert(t('keepAtLeastOneSegment'));
       return;
     }
 
@@ -323,7 +325,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
       setIsProcessing(false);
     } catch (error) {
       console.error('Error deleting segment:', error);
-      alert('Erreur lors de la suppression');
+      alert(t('deleteError'));
       setIsProcessing(false);
     }
   };
@@ -367,7 +369,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
       setIsProcessing(false);
     } catch (error) {
       console.error('Error downloading:', error);
-      alert('Erreur lors du téléchargement');
+      alert(t('downloadError'));
       setIsProcessing(false);
     }
   };
@@ -405,8 +407,8 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
       {/* Header with Undo/Redo */}
       <div className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-6 md:mb-8 gap-3">
         <div className="text-center flex-1 w-full sm:w-auto">
-          <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">Découpeur Audio</h1>
-          <p className="text-xs sm:text-sm text-neutral-400">Éditez avec précision • Ctrl+Z pour annuler</p>
+          <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">{t('cutterTitle')}</h1>
+          <p className="text-xs sm:text-sm text-neutral-400">{t('cutterSubtitle')}</p>
         </div>
         
         {audioBuffer && (
@@ -415,23 +417,23 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
               onClick={undo}
               disabled={!canUndo}
               className="px-3 sm:px-4 py-2 bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 text-neutral-100 rounded-lg transition-colors disabled:opacity-30 flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base min-h-[44px]"
-              title="Annuler (Ctrl+Z)"
+              title={t('undoTitle')}
             >
               <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" className="sm:w-[18px] sm:h-[18px]">
                 <path d="M3 9h12M3 9l4-4M3 9l4 4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span className="hidden sm:inline">Annuler</span>
+              <span className="hidden sm:inline">{t('undo')}</span>
             </button>
             <button
               onClick={redo}
               disabled={!canRedo}
               className="px-3 sm:px-4 py-2 bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 text-neutral-100 rounded-lg transition-colors disabled:opacity-30 flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base min-h-[44px]"
-              title="Rétablir (Ctrl+Y)"
+              title={t('redoTitle')}
             >
               <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" className="sm:w-[18px] sm:h-[18px]">
                 <path d="M15 9H3M15 9l-4-4M15 9l-4 4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span className="hidden sm:inline">Rétablir</span>
+              <span className="hidden sm:inline">{t('redo')}</span>
             </button>
           </div>
         )}
@@ -448,13 +450,13 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
                 <path d="M32 16v32M16 32h32" strokeLinecap="round"/>
                 <circle cx="32" cy="32" r="20" strokeLinecap="round"/>
               </svg>
-              <h3 className="text-xl font-medium text-neutral-100 mb-2">Glissez-déposez un fichier audio</h3>
-              <p className="text-neutral-400 mb-6">ou cliquez pour parcourir</p>
+              <h3 className="text-xl font-medium text-neutral-100 mb-2">{t('dropAudioFile')}</h3>
+              <p className="text-neutral-400 mb-6">{t('orClickToBrowse')}</p>
               <button className="px-6 py-3 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors inline-flex items-center gap-2">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M8 3v10M3 8h10" strokeLinecap="round"/>
                 </svg>
-                Parcourir mes fichiers
+                {t('browseMyFiles')}
               </button>
             </div>
             <input
@@ -473,14 +475,14 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
             {/* Zoom Controls + Cut + Delete Buttons */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2">
               <div className="text-xs sm:text-sm text-neutral-400">
-                {segments.length} segment{segments.length > 1 ? 's' : ''} • Touchez pour sélectionner
+                {segments.length} {t('segment')}{segments.length > 1 ? 's' : ''} • {t('tapToSelect')}
               </div>
               <div className="flex gap-1.5 sm:gap-2 flex-wrap">
                 <button
                   onClick={handleZoomOut}
                   disabled={zoom <= 1}
                   className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-100 rounded transition-colors disabled:opacity-30"
-                  title="Zoom arrière"
+                  title={t('zoomOut')}
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="7" cy="7" r="5"/>
@@ -492,7 +494,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
                   onClick={handleZoomIn}
                   disabled={zoom >= 10}
                   className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-100 rounded transition-colors disabled:opacity-30"
-                  title="Zoom avant"
+                  title={t('zoomIn')}
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="7" cy="7" r="5"/>
@@ -508,7 +510,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
                   onClick={handleCutAtPosition}
                   disabled={isProcessing}
                   className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-100 rounded transition-colors disabled:opacity-30"
-                  title="Couper à la position actuelle"
+                  title={t('cutAtCurrentPosition')}
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <circle cx="4" cy="4" r="2"/>
@@ -522,7 +524,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
                   onClick={() => selectedSegmentId && handleDeleteSegment(selectedSegmentId)}
                   disabled={!selectedSegmentId}
                   className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors disabled:opacity-30 disabled:bg-neutral-800 disabled:text-neutral-500"
-                  title="Supprimer le segment sélectionné (Suppr)"
+                  title={t('deleteSelectedSegment')}
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M3 3l10 10M13 3L3 13" strokeLinecap="round"/>
@@ -580,7 +582,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
                           e.stopPropagation();
                           setResizingSegment({ id: segment.id, edge: 'start' });
                         }}
-                        title="Glissez pour ajuster le début"
+                        title={t('dragToAdjustStart')}
                       />
 
                       {/* Segment Label */}
@@ -590,7 +592,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
                             ? 'bg-primary-500 text-white shadow-lg'
                             : 'bg-neutral-900 text-neutral-300'
                         }`}>
-                          Segment {index + 1}
+                          {t('segmentN', { n: index + 1 })}
                         </div>
                       </div>
 
@@ -601,7 +603,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
                           e.stopPropagation();
                           setResizingSegment({ id: segment.id, edge: 'end' });
                         }}
-                        title="Glissez pour ajuster la fin"
+                        title={t('dragToAdjustEnd')}
                       />
                     </div>
                   );
@@ -690,7 +692,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
                 <circle cx="7" cy="17" r="3"/>
                 <path d="M10 9l8 8M10 15l8-8" strokeLinecap="round"/>
               </svg>
-              <span className="text-sm sm:text-base">Couper à {AudioUtils.formatTime(currentTime)}</span>
+              <span className="text-sm sm:text-base">{t('cutAt', { time: AudioUtils.formatTime(currentTime) })}</span>
             </button>
 
             <button
@@ -702,7 +704,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
                 <path d="M10 3v11M10 14l-4-4M10 14l4-4" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M4 17h12" strokeLinecap="round"/>
               </svg>
-              <span className="text-sm sm:text-base">Télécharger</span>
+              <span className="text-sm sm:text-base">{t('download')}</span>
             </button>
           </div>
 
@@ -720,7 +722,7 @@ export const AudioCutter = ({ audioContext }: AudioCutterProps) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-neutral-900 rounded-xl p-8 text-center max-w-md mx-4">
             <div className="spinner mx-auto mb-4"></div>
-            <p className="text-neutral-100">Traitement en cours...</p>
+            <p className="text-neutral-100">{t('processing')}</p>
           </div>
         </div>
       )}

@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { canEncode } from 'mediabunny';
 import { initMediaBunny } from '@/utils/mediabunnyConfig';
+import { useI18n } from '@/i18n';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface ExportModalProps {
 }
 
 export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModalProps) => {
+  const { t } = useI18n();
   const [format, setFormat] = useState<'wav' | 'mp3' | 'flac'>('wav');
   const [bitrate, setBitrate] = useState(320);
   const [customFileName, setCustomFileName] = useState(fileName.replace(/\.[^/.]+$/, '') + '_exported');
@@ -40,7 +42,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-neutral-900 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4 sm:mb-5 md:mb-6">
-          <h2 className="text-xl sm:text-2xl font-semibold text-neutral-100">Exporter l'audio</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold text-neutral-100">{t('exportAudio')}</h2>
           <button
             onClick={onClose}
             className="w-10 h-10 sm:w-9 sm:h-9 md:w-8 md:h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 flex items-center justify-center transition-colors min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px]"
@@ -54,14 +56,14 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
         <div className="space-y-4 sm:space-y-5 md:space-y-6">
           {/* File name input - Touch-friendly */}
           <div>
-            <label className="block text-xs sm:text-sm text-neutral-400 mb-2">Nom du fichier</label>
+            <label className="block text-xs sm:text-sm text-neutral-400 mb-2">{t('fileName')}</label>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={customFileName}
                 onChange={(e) => setCustomFileName(e.target.value)}
                 className="flex-1 px-3 sm:px-4 py-3 bg-neutral-950 rounded-lg text-neutral-100 border border-neutral-700 focus:border-primary-500 focus:outline-none transition-colors text-sm sm:text-base min-h-[48px]"
-                placeholder="Nom du fichier"
+                placeholder={t('fileName')}
               />
               <div className="px-3 py-3 bg-neutral-950 rounded-lg text-neutral-400 border border-neutral-700 text-sm sm:text-base min-h-[48px] flex items-center">
                 .{format}
@@ -71,7 +73,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
 
           {/* Format selection - Touch-friendly */}
           <div>
-            <label className="block text-xs sm:text-sm text-neutral-400 mb-2 sm:mb-3">Format audio</label>
+            <label className="block text-xs sm:text-sm text-neutral-400 mb-2 sm:mb-3">{t('audioFormat')}</label>
             <div className={`grid gap-2 sm:gap-3 ${flacSupported ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <button
                 onClick={() => setFormat('wav')}
@@ -82,7 +84,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
                 }`}
               >
                 <div className="text-base sm:text-lg font-bold">WAV</div>
-                <div className="text-xs opacity-80">Sans perte</div>
+                <div className="text-xs opacity-80">{t('lossless')}</div>
               </button>
               <button
                 onClick={() => setFormat('mp3')}
@@ -93,7 +95,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
                 }`}
               >
                 <div className="text-base sm:text-lg font-bold">MP3</div>
-                <div className="text-xs opacity-80">Compressé</div>
+                <div className="text-xs opacity-80">{t('compressedFormat')}</div>
               </button>
               {flacSupported && (
               <button
@@ -105,7 +107,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
                 }`}
               >
                 <div className="text-base sm:text-lg font-bold">FLAC</div>
-                <div className="text-xs opacity-80">Lossless</div>
+                <div className="text-xs opacity-80">{t('flacLossless')}</div>
               </button>
               )}
             </div>
@@ -114,7 +116,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
           {/* Bitrate selection */}
           <div>
             <label className="block text-sm text-neutral-400 mb-3">
-              Qualité {format === 'mp3' ? '(Bitrate)' : ''}
+              {format === 'mp3' ? t('qualityBitrate') : t('quality')}
             </label>
             <div className="grid grid-cols-2 gap-2">
               {bitrateOptions[format].map((rate) => (
@@ -128,8 +130,8 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
                   }`}
                 >
                   {rate} kbps
-                  {rate === 320 && format === 'mp3' && <span className="text-xs ml-1">(Max)</span>}
-                  {rate === 1411 && <span className="text-xs ml-1">(CD)</span>}
+                  {rate === 320 && format === 'mp3' && <span className="text-xs ml-1">{t('max')}</span>}
+                  {rate === 1411 && <span className="text-xs ml-1">{t('cd')}</span>}
                 </button>
               ))}
             </div>
@@ -138,7 +140,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
           {/* File size estimate */}
           <div className="bg-neutral-950 rounded-lg p-4 border border-neutral-700">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-neutral-400">Taille estimée :</span>
+              <span className="text-neutral-400">{t('estimatedSize')}</span>
               <span className="text-neutral-100 font-medium">
                 {format === 'wav' || format === 'flac' ? '~10-50 MB' : `~${Math.round(bitrate / 10)} MB`}
               </span>
@@ -154,7 +156,7 @@ export const ExportModal = ({ isOpen, onClose, onExport, fileName }: ExportModal
               <path d="M10 3v11M10 14l-4-4M10 14l4-4" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M4 17h12" strokeLinecap="round"/>
             </svg>
-            <span>Exporter en {format.toUpperCase()}</span>
+            <span>{t('exportAs', { format: format.toUpperCase() })}</span>
           </button>
         </div>
       </div>

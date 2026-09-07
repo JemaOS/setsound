@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Jema Technology.
 // Distributed under the license specified in the root directory of this project.
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { AudioCutter } from './components/tools/AudioCutter';
 import { AudioJoiner } from './components/tools/AudioJoiner';
@@ -12,12 +12,18 @@ import { AudioCompressor } from './components/tools/AudioCompressor';
 import { ToolType } from './types';
 import { useAudioContext } from './hooks/useAudioContext';
 import { SubscriptionGuard } from './SubscriptionGuard';
+import { useI18n } from './i18n';
 
 function App() {
   const [currentTool, setCurrentTool] = useState<ToolType>('cutter');
   // Auto-hide sidebar on mobile, show on desktop
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 769);
   const { audioContext, isReady, resumeContext } = useAudioContext();
+  const { t } = useI18n();
+
+  useEffect(() => {
+    document.title = t('documentTitle');
+  }, [t]);
 
   const handleToolChange = async (tool: ToolType) => {
     setCurrentTool(tool);
@@ -31,7 +37,7 @@ function App() {
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <div className="spinner mx-auto mb-4"></div>
-            <p className="text-neutral-400">Initialisation de l'audio...</p>
+            <p className="text-neutral-400">{t('audioInitializing')}</p>
           </div>
         </div>
       );
@@ -81,7 +87,7 @@ function App() {
           <button
             onClick={() => setSidebarOpen(true)}
             className="fixed top-4 left-4 z-40 w-12 h-12 md:w-10 md:h-10 rounded-lg bg-neutral-800/80 hover:bg-neutral-700/90 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg"
-            title="Afficher le panneau"
+            title={t('showPanel')}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" className="md:w-4 md:h-4">
               <path d="M7 4l6 6-6 6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -96,17 +102,17 @@ function App() {
           
           {/* Footer */}
           <footer className="py-4 px-6 text-center text-sm text-neutral-500 border-t border-neutral-800/50">
-            Développé par{' '}
-            <a 
-              href="https://www.jematechnology.fr/" 
-              target="_blank" 
+            {t('developedBy')}{' '}
+            <a
+              href="https://www.jematechnology.fr/"
+              target="_blank"
               rel="noopener noreferrer"
               className="font-semibold transition-all hover:opacity-80"
               style={{ color: '#6b6fdb' }}
             >
               Jema Technology
             </a>
-            {' '}© 2025 • Open Source & Libre
+            {' '}{t('footerSuffix')}
           </footer>
         </div>
       </main>

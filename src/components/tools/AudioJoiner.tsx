@@ -9,6 +9,7 @@ import { useHistory } from '@/hooks/useHistory';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useWaveform } from '@/hooks/useWaveform';
 import { ExportModal } from '@/components/ExportModal';
+import { useI18n } from '@/i18n';
 
 interface AudioJoinerProps {
   audioContext: AudioContext;
@@ -58,6 +59,7 @@ const useThrottle = <T,>(value: T, interval: number): T => {
 };
 
 export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
+  const { t } = useI18n();
   const [isProcessing, setIsProcessing] = useState(false);
   const [trackZooms, setTrackZooms] = useState<Record<string, number>>({});
   const [mergedBuffer, setMergedBuffer] = useState<AudioBuffer | null>(null);
@@ -506,7 +508,7 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
     const segments = track.segments;
 
     // Find which segment contains the cut point
-    let newSegments: AudioSegment[] = [];
+    const newSegments: AudioSegment[] = [];
     let cutMade = false;
     let currentPosition = 0;
 
@@ -610,11 +612,11 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
         setIsProcessing(false);
       } catch (error) {
         console.error('Error deleting segment:', error);
-        alert('Erreur lors de la suppression');
+        alert(t('deleteError'));
         setIsProcessing(false);
       }
     }
-  }, [tracks, push]);
+  }, [tracks, push, t]);
 
   const handleResizeSegment = useCallback(async (trackId: string, segmentId: string, newSegments: AudioSegment[]) => {
     const trackIndex = tracks.findIndex(t => t.id === trackId);
@@ -721,10 +723,10 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
       setIsProcessing(false);
     } catch (error) {
       console.error('Error downloading:', error);
-      alert('Erreur lors du téléchargement');
+      alert(t('downloadError'));
       setIsProcessing(false);
     }
-  }, [mergedBuffer]);
+  }, [mergedBuffer, t]);
 
   // Clear all selections without affecting history
   const clearSelections = useCallback(() => {
@@ -812,8 +814,8 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
       {/* Header with Undo/Redo */}
       <div className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-6 md:mb-8 gap-3">
         <div className="text-center flex-1 w-full sm:w-auto">
-          <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">Fusionneur Audio</h1>
-          <p className="text-xs sm:text-sm text-neutral-400">Timeline multi-pistes • Ctrl+Z pour annuler</p>
+          <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">{t('joinerTitle')}</h1>
+          <p className="text-xs sm:text-sm text-neutral-400">{t('joinerSubtitle')}</p>
         </div>
         
         {tracks.length > 0 && (
@@ -822,23 +824,23 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
               onClick={handleUndo}
               disabled={!canUndo}
               className="px-3 sm:px-4 py-2 bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 text-neutral-100 rounded-lg transition-colors disabled:opacity-30 flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base min-h-[44px]"
-              title="Annuler (Ctrl+Z)"
+              title={t('undoTitle')}
             >
               <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" className="sm:w-[18px] sm:h-[18px]">
                 <path d="M3 9h12M3 9l4-4M3 9l4 4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span className="hidden sm:inline">Annuler</span>
+              <span className="hidden sm:inline">{t('undo')}</span>
             </button>
             <button
               onClick={handleRedo}
               disabled={!canRedo}
               className="px-3 sm:px-4 py-2 bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 text-neutral-100 rounded-lg transition-colors disabled:opacity-30 flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base min-h-[44px]"
-              title="Rétablir (Ctrl+Y)"
+              title={t('redoTitle')}
             >
               <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" className="sm:w-[18px] sm:h-[18px]">
                 <path d="M15 9H3M15 9l-4-4M15 9l-4 4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span className="hidden sm:inline">Rétablir</span>
+              <span className="hidden sm:inline">{t('redo')}</span>
             </button>
           </div>
         )}
@@ -857,10 +859,10 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
                 <rect x="24" y="36" width="16" height="16" rx="2" strokeLinecap="round"/>
                 <path d="M20 28v8M44 28v8M32 28v8" strokeLinecap="round"/>
               </svg>
-              <h3 className="text-xl font-medium text-neutral-100 mb-2">Ajoutez plusieurs pistes audio</h3>
-              <p className="text-neutral-400 mb-6">Chaque piste peut être éditée individuellement</p>
+              <h3 className="text-xl font-medium text-neutral-100 mb-2">{t('addMultipleTracks')}</h3>
+              <p className="text-neutral-400 mb-6">{t('eachTrackEditable')}</p>
               <button className="px-6 py-3 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
-                Sélectionner des fichiers
+                {t('selectFiles')}
               </button>
             </div>
             <input
@@ -910,21 +912,21 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
                 onClick={handleZoomOut}
                 disabled={!selectedTrackId || selectedTrackZoom <= 1}
                 className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-100 rounded transition-colors disabled:opacity-30"
-                title={selectedTrackId ? "Zoom arrière" : "Sélectionnez un segment pour zoomer"}
+                title={selectedTrackId ? t('zoomOut') : t('selectSegmentToZoom')}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="7" cy="7" r="5"/>
                   <path d="M4 7h6M11 11l4 4" strokeLinecap="round"/>
                 </svg>
               </button>
-              <span className="px-3 py-1.5 bg-neutral-950 text-neutral-100 rounded text-sm" title={selectedTrackId ? `Zoom piste ${tracks.findIndex(t => t.id === selectedTrackId) + 1}` : "Sélectionnez un segment"}>
+              <span className="px-3 py-1.5 bg-neutral-950 text-neutral-100 rounded text-sm" title={selectedTrackId ? t('trackZoom', { n: tracks.findIndex(tr => tr.id === selectedTrackId) + 1 }) : t('selectSegment')}>
                 {selectedTrackId ? `${Math.round(selectedTrackZoom * 100)}%` : '--'}
               </span>
               <button
                 onClick={handleZoomIn}
                 disabled={!selectedTrackId || selectedTrackZoom >= 10}
                 className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-100 rounded transition-colors disabled:opacity-30"
-                title={selectedTrackId ? "Zoom avant" : "Sélectionnez un segment pour zoomer"}
+                title={selectedTrackId ? t('zoomIn') : t('selectSegmentToZoom')}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="7" cy="7" r="5"/>
@@ -941,7 +943,7 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M8 3v10M3 8h10" strokeLinecap="round"/>
                 </svg>
-                Ajouter piste
+                {t('addTrack')}
               </button>
               
               <button
@@ -953,7 +955,7 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
                   <path d="M8 2v10M8 12l-3-3M8 12l3-3" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M3 14h10" strokeLinecap="round"/>
                 </svg>
-                Télécharger
+                {t('download')}
               </button>
             </div>
             
@@ -1006,7 +1008,7 @@ export const AudioJoiner = ({ audioContext }: AudioJoinerProps) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-neutral-900 rounded-xl p-8 text-center">
             <div className="spinner mx-auto mb-4"></div>
-            <p className="text-neutral-100">Traitement en cours...</p>
+            <p className="text-neutral-100">{t('processing')}</p>
           </div>
         </div>
       )}
@@ -1053,6 +1055,7 @@ const TrackTimeline = ({
   onToggleTrackPlayback,
   onUpdatePlayheadPosition
 }: TrackTimelineProps) => {
+  const { t } = useI18n();
   const [localTime, setLocalTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [resizingSegment, setResizingSegment] = useState<{ id: string; edge: 'start' | 'end' } | null>(null);
@@ -1300,7 +1303,7 @@ const TrackTimeline = ({
           <div>
             <div className="font-medium text-neutral-100">{track.name}</div>
             <div className="text-xs text-neutral-400">
-              {segmentInfo.count} segment{segmentInfo.count > 1 ? 's' : ''} • {segmentInfo.durationFormatted}
+              {segmentInfo.count} {t('segment')}{segmentInfo.count > 1 ? 's' : ''} • {segmentInfo.durationFormatted}
             </div>
           </div>
         </div>
@@ -1310,7 +1313,7 @@ const TrackTimeline = ({
           <button
             onClick={() => onToggleTrackPlayback(track.id, localTime)}
             className="px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white rounded transition-colors"
-            title={isTrackPlaying ? "Pause" : "Écouter cette piste"}
+            title={isTrackPlaying ? t('pause') : t('listenToTrack')}
           >
             {isTrackPlaying ? (
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -1328,7 +1331,7 @@ const TrackTimeline = ({
           <button
             onClick={handleCut}
             className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-100 rounded transition-colors"
-            title="Couper à la position"
+            title={t('cutAtPosition')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <circle cx="4" cy="4" r="2"/>
@@ -1342,7 +1345,7 @@ const TrackTimeline = ({
             onClick={handleDeleteSelected}
             disabled={!selectedSegmentId}
             className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors disabled:opacity-30 disabled:bg-neutral-800"
-            title="Supprimer segment sélectionné (Suppr)"
+            title={t('deleteSelectedSegmentShort')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M3 3l10 10M13 3L3 13" strokeLinecap="round"/>
@@ -1428,6 +1431,7 @@ interface SegmentListProps {
 }
 
 const SegmentList = memo(({ segments, duration, selectedSegmentId, onSegmentClick, onResizeStart }: SegmentListProps) => {
+  const { t } = useI18n();
   return (
     <>
       {segments.map((segment, index) => {
@@ -1455,7 +1459,7 @@ const SegmentList = memo(({ segments, duration, selectedSegmentId, onSegmentClic
             <div
               className="absolute left-0 top-0 bottom-0 w-3 sm:w-2 cursor-ew-resize hover:bg-primary-500 hover:bg-opacity-50 active:bg-primary-500 active:bg-opacity-70 z-10"
               onMouseDown={(e) => onResizeStart(e, segment.id, 'start')}
-              title="Glissez pour ajuster le début"
+              title={t('dragToAdjustStart')}
             />
 
             {/* Segment Label */}
@@ -1471,7 +1475,7 @@ const SegmentList = memo(({ segments, duration, selectedSegmentId, onSegmentClic
             <div
               className="absolute right-0 top-0 bottom-0 w-3 sm:w-2 cursor-ew-resize hover:bg-primary-500 hover:bg-opacity-50 active:bg-primary-500 active:bg-opacity-70 z-10"
               onMouseDown={(e) => onResizeStart(e, segment.id, 'end')}
-              title="Glissez pour ajuster la fin"
+              title={t('dragToAdjustEnd')}
             />
           </div>
         );

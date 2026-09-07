@@ -5,12 +5,14 @@ import { useState, useRef } from 'react';
 import { AudioUtils } from '@/utils/audioUtils';
 import { BPMDetector as BPMDetectorUtil } from '@/utils/bpmDetector';
 import { BPMResult } from '@/types';
+import { useI18n } from '@/i18n';
 
 interface BPMDetectorProps {
   audioContext: AudioContext;
 }
 
 export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) => {
+  const { t } = useI18n();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<BPMResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,7 +32,7 @@ export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) =
       setIsAnalyzing(false);
     } catch (error) {
       console.error('Error analyzing BPM:', error);
-      alert('Erreur lors de l\'analyse');
+      alert(t('analysisError'));
       setIsAnalyzing(false);
     }
   };
@@ -38,8 +40,8 @@ export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) =
   return (
     <div className="flex flex-col h-full p-4 sm:p-6 md:p-8">
       <div className="text-center mb-4 sm:mb-6 md:mb-8">
-        <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">Détecteur BPM & Ton</h1>
-        <p className="text-xs sm:text-sm text-neutral-400">Analysez le tempo et la tonalité de vos fichiers audio</p>
+        <h1 className="text-2xl sm:text-2xl md:text-3xl font-semibold text-neutral-100 mb-1 sm:mb-2">{t('bpmTitle')}</h1>
+        <p className="text-xs sm:text-sm text-neutral-400">{t('bpmSubtitle')}</p>
       </div>
 
       {!result ? (
@@ -53,10 +55,10 @@ export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) =
                 <circle cx="32" cy="32" r="24" strokeLinecap="round"/>
                 <path d="M16 32h8l4-8 4 16 4-8h8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <h3 className="text-xl font-medium text-neutral-100 mb-2">Analysez un fichier audio</h3>
-              <p className="text-neutral-400 mb-6">Détection automatique du BPM et de la tonalité</p>
+              <h3 className="text-xl font-medium text-neutral-100 mb-2">{t('analyzeAudioFile')}</h3>
+              <p className="text-neutral-400 mb-6">{t('autoDetectBpmKey')}</p>
               <button className="px-6 py-3 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
-                Choisir un fichier
+                {t('chooseFile')}
               </button>
             </div>
             <input
@@ -72,22 +74,22 @@ export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) =
         <div className="flex-1 flex flex-col gap-4 sm:gap-5 md:gap-6">
           <div className="bg-neutral-900 rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-8">
             <h3 className="text-xl sm:text-2xl font-semibold text-neutral-100 mb-4 sm:mb-6 md:mb-8 text-center">
-              Résultats de l'analyse
+              {t('analysisResults')}
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
               <div className="bg-neutral-950 rounded-lg p-4 sm:p-5 md:p-6 border border-neutral-700 text-center">
-                <div className="text-xs sm:text-sm text-neutral-400 mb-1 sm:mb-2">Tempo (BPM)</div>
+                <div className="text-xs sm:text-sm text-neutral-400 mb-1 sm:mb-2">{t('tempo')}</div>
                 <div className="text-4xl sm:text-5xl md:text-6xl font-bold text-primary-500">{result.tempo}</div>
               </div>
 
               <div className="bg-neutral-950 rounded-lg p-4 sm:p-5 md:p-6 border border-neutral-700 text-center">
-                <div className="text-xs sm:text-sm text-neutral-400 mb-1 sm:mb-2">Tonalité</div>
+                <div className="text-xs sm:text-sm text-neutral-400 mb-1 sm:mb-2">{t('keyLabel')}</div>
                 <div className="text-4xl sm:text-5xl md:text-6xl font-bold text-primary-500">{result.key}</div>
               </div>
 
               <div className="bg-neutral-950 rounded-lg p-4 sm:p-5 md:p-6 border border-neutral-700 text-center">
-                <div className="text-xs sm:text-sm text-neutral-400 mb-1 sm:mb-2">Durée</div>
+                <div className="text-xs sm:text-sm text-neutral-400 mb-1 sm:mb-2">{t('duration')}</div>
                 <div className="text-4xl sm:text-5xl md:text-6xl font-bold text-primary-500">
                   {AudioUtils.formatTime(result.duration)}
                 </div>
@@ -96,7 +98,7 @@ export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) =
 
             <div className="bg-neutral-950 rounded-lg p-6 border border-neutral-700">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-neutral-100">Confiance de l'analyse:</span>
+                <span className="text-neutral-100">{t('analysisConfidence')}</span>
                 <span className="text-primary-500 font-semibold text-xl">{result.confidence}%</span>
               </div>
               <div className="w-full h-3 bg-neutral-800 rounded-full overflow-hidden">
@@ -112,7 +114,7 @@ export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) =
           {result.tempoChanges && result.tempoChanges.length > 1 && (
             <div className="bg-neutral-900 rounded-xl p-6">
               <h3 className="text-lg font-semibold text-neutral-100 mb-4">
-                Changements de tempo détectés
+                {t('tempoChangesDetected')}
               </h3>
               <div className="space-y-2">
                 {result.tempoChanges.map((change, index) => (
@@ -126,10 +128,10 @@ export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) =
                       </div>
                       <div>
                         <div className="text-neutral-100 font-medium">
-                          À {AudioUtils.formatTime(change.time)}
+                          {t('atTime', { time: AudioUtils.formatTime(change.time) })}
                         </div>
                         <div className="text-xs text-neutral-400">
-                          Position dans le morceau
+                          {t('positionInTrack')}
                         </div>
                       </div>
                     </div>
@@ -151,7 +153,7 @@ export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) =
             }}
             className="w-full px-4 sm:px-6 py-3 bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 text-neutral-100 rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base min-h-[48px]"
           >
-            Analyser un autre fichier
+            {t('analyzeAnotherFile')}
           </button>
         </div>
       )}
@@ -160,8 +162,8 @@ export const BPMDetector = ({ audioContext: _audioContext }: BPMDetectorProps) =
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-neutral-900 rounded-xl p-8 text-center">
             <div className="spinner mx-auto mb-4"></div>
-            <p className="text-neutral-100 text-lg mb-2">Analyse en cours...</p>
-            <p className="text-neutral-400 text-sm">Détection du tempo et des changements</p>
+            <p className="text-neutral-100 text-lg mb-2">{t('analyzing')}</p>
+            <p className="text-neutral-400 text-sm">{t('detectingTempoChanges')}</p>
           </div>
         </div>
       )}
