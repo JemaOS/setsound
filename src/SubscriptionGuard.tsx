@@ -334,7 +334,11 @@ async function checkSubscription(token: string): Promise<CheckResult> {
     if (res.status === 401 || res.status === 403) return 'unauthorized';
     if (!res.ok) return 'error'; // 5xx : ne jamais murer sur une panne API
     const data = await res.json();
-    return data.hasSubscription === true ? 'ok' : 'no-subscription';
+    if (data.hasSubscription !== true) return 'no-subscription';
+    // Freemium gate (SaaS PR #54): un plan sans apps (app_scope 'none', ex. Freemium)
+    // affiche le mur 'Passer a Pro' au lieu d'ouvrir l'app.
+    if ((data as { apps_allowed?: unknown }).apps_allowed === false) return 'no-subscription';
+    return 'ok';
   } catch {
     return 'error'; // offline/DNS/CORS : conserver l'état courant
   }
