@@ -19,16 +19,13 @@ export class FFmpegConverter {
     
     if (onLog) {
         this.ffmpeg.setLogger(({ message }: { message: string }) => {
-            console.log('FFmpeg:', message);
             onLog(message);
         });
     }
     
     try {
-        console.log('Loading FFmpeg (Single Threaded)...');
         await this.ffmpeg.load();
         this.loaded = true;
-        console.log('FFmpeg loaded successfully');
     } catch (error) {
         console.error('Failed to load FFmpeg:', error);
         throw error;
@@ -80,7 +77,6 @@ export class FFmpegConverter {
 
         args.push(outputName);
 
-        console.log('Starting FFmpeg conversion with args:', args);
         await ffmpeg.run(...args);
 
         const data = ffmpeg.FS('readFile', outputName);

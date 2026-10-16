@@ -24,7 +24,6 @@ const updateSW = registerSW({
     updateSW(true)
   },
   onOfflineReady() {
-    console.log('Setsound est prêt pour une utilisation hors ligne.')
   },
   onRegisteredSW(_swUrl, registration) {
     // Check for updates periodically (every 60 minutes)

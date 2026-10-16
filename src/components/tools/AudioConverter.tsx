@@ -94,7 +94,7 @@ export const AudioConverter = ({ audioContext: _audioContext }: AudioConverterPr
         setProgressMessage(fallback ? t('convertingFfmpeg') : t('converting'));
       },
       (msg) => {
-        console.log(msg);
+        void msg;
       }
     );
 

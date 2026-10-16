@@ -7,7 +7,6 @@ export function initMediaBunny() {
   
   try {
     registerMp3Encoder();
-    console.log('MediaBunny MP3 encoder registered');
     
     initialized = true;
   } catch (error) {

@@ -60,7 +60,6 @@ export const useAudioPlayer = ({ audioBuffer, audioContext, onTimeUpdate }: UseA
 
   const play = useCallback(async (startFrom?: number) => {
     if (!audioBuffer || !audioContext) {
-      console.log('Cannot play: missing audioBuffer or audioContext');
       return;
     }
 
