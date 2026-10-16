@@ -9,6 +9,10 @@
 //
 // Le mot de passe part en HTTPS vers connect-api (comme n'importe quel login) ;
 // il n'est ni stocké ni loggé côté client.
+//
+// Anti-robot : au-delà d'un seuil d'échecs, connect-api exige un token CAPTCHA
+// (Cloudflare Turnstile). Le token est fourni par le widget de SubscriptionGuard
+// et transmis ici sous `captcha_token`.
 
 const API_BASE = 'https://connect-api.jematech.fr';
 const CONNECT_LOGIN_URL = `${API_BASE}/v1/connect/login`;
@@ -25,17 +29,22 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 
 export async function connectWebLogin(
   email: string,
-  password: string
+  password: string,
+  captchaToken?: string
 ): Promise<ConnectLoginResult> {
   const trimmed = email.trim();
   if (trimmed.length === 0 || password.length === 0) {
     return { error: 'missing-credentials' };
   }
   try {
+    const body: Record<string, string> = { email: trimmed, password };
+    if (captchaToken !== undefined && captchaToken.length > 0) {
+      body.captcha_token = captchaToken;
+    }
     const res = await fetch(CONNECT_LOGIN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: trimmed, password }),
+      body: JSON.stringify(body),
     });
     let parsed: unknown = null;
     try {

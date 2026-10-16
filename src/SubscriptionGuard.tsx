@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { connectWebLogin, persistConnectSession } from './connectSession';
 import { useI18n } from './i18n';
 import {
@@ -596,11 +596,114 @@ function LockIcon() {
   );
 }
 
+// --- CAPTCHA (Cloudflare Turnstile) --------------------------------------
+// Anti-robot a seuil sur le login web (/v1/connect/login). La cle de SITE est
+// publique ; surchargeable par VITE_CAPTCHA_SITE_KEY (defaut ci-dessous).
+const CAPTCHA_SITE_KEY =
+  (import.meta.env.VITE_CAPTCHA_SITE_KEY as string | undefined) ||
+  '0x4AAAAAAFYbIgdy41K_uPQL';
+const TURNSTILE_SCRIPT =
+  'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
+interface TurnstileApi {
+  render: (el: HTMLElement, opts: Record<string, unknown>) => string;
+  remove: (id: string) => void;
+}
+
+function getTurnstile(): TurnstileApi | undefined {
+  return (window as unknown as { turnstile?: TurnstileApi }).turnstile;
+}
+
+let turnstileScriptPromise: Promise<boolean> | null = null;
+
+function loadTurnstileScript(): Promise<boolean> {
+  if (getTurnstile() !== undefined) {
+    return Promise.resolve(true);
+  }
+  if (turnstileScriptPromise !== null) {
+    return turnstileScriptPromise;
+  }
+  turnstileScriptPromise = new Promise<boolean>(resolve => {
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${TURNSTILE_SCRIPT}"]`
+    );
+    if (existing !== null) {
+      existing.addEventListener('load', () => resolve(true));
+      existing.addEventListener('error', () => resolve(false));
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = TURNSTILE_SCRIPT;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+  return turnstileScriptPromise;
+}
+
+function TurnstileWidget({
+  onVerify,
+  resetSignal = 0,
+}: {
+  onVerify: (token: string) => void;
+  resetSignal?: number;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
+  const onVerifyRef = useRef(onVerify);
+  onVerifyRef.current = onVerify;
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadTurnstileScript().then(ok => {
+      if (!ok || cancelled || containerRef.current === null) {
+        return;
+      }
+      const turnstile = getTurnstile();
+      if (turnstile === undefined) {
+        return;
+      }
+      if (widgetIdRef.current !== null) {
+        try {
+          turnstile.remove(widgetIdRef.current);
+        } catch {
+          /* noop */
+        }
+        widgetIdRef.current = null;
+      }
+      containerRef.current.replaceChildren();
+      widgetIdRef.current = turnstile.render(containerRef.current, {
+        sitekey: CAPTCHA_SITE_KEY,
+        callback: (token: string) => {
+          onVerifyRef.current(token);
+        },
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [resetSignal]);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ display: 'flex', justifyContent: 'center', marginTop: '0.25rem' }}
+    />
+  );
+}
+
 function WebLoginForm({ onSuccess }: { onSuccess?: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // CAPTCHA à seuil : le serveur (/v1/connect/login) exige un token après
+  // plusieurs échecs. Sous le seuil : rien ne change.
+  const [captchaRequired, setCaptchaRequired] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -609,7 +712,11 @@ function WebLoginForm({ onSuccess }: { onSuccess?: () => void }) {
     }
     setBusy(true);
     setError(null);
-    const result = await connectWebLogin(email, password);
+    const result = await connectWebLogin(
+      email,
+      password,
+      captchaToken.length > 0 ? captchaToken : undefined
+    );
     if (result.accessToken !== undefined) {
       persistConnectSession(result.accessToken, result.refreshToken ?? null);
       if (onSuccess !== undefined) {
@@ -617,11 +724,16 @@ function WebLoginForm({ onSuccess }: { onSuccess?: () => void }) {
       }
       return;
     }
-    setError(
-      result.captchaRequired === true
-        ? 'Vérification anti-robot requise. Réessayez.'
-        : 'Connexion impossible. Vérifiez vos identifiants Jema.'
-    );
+    if (result.captchaRequired === true) {
+      // Token à usage unique : on réaffiche/réinitialise le widget.
+      setCaptchaRequired(true);
+      setCaptchaToken('');
+      setCaptchaReset(value => value + 1);
+      setError('Vérification anti-robot requise. Validez le CAPTCHA et réessayez.');
+      setBusy(false);
+      return;
+    }
+    setError('Connexion impossible. Vérifiez vos identifiants Jema.');
     setBusy(false);
   };
 
@@ -679,6 +791,14 @@ function WebLoginForm({ onSuccess }: { onSuccess?: () => void }) {
         }}
         style={inputStyle}
       />
+      {captchaRequired && (
+        <TurnstileWidget
+          resetSignal={captchaReset}
+          onVerify={token => {
+            setCaptchaToken(token);
+          }}
+        />
+      )}
       <button
         type="submit"
         disabled={busy}
