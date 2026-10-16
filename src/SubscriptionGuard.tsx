@@ -632,6 +632,8 @@ function WebLoginForm({ onSuccess }: { onSuccess?: () => void }) {
     border: '1px solid rgba(79, 70, 229, 0.35)',
     fontSize: '0.95rem',
     boxSizing: 'border-box',
+    background: '#ffffff',
+    color: '#0f172a',
   };
 
   return (
