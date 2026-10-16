@@ -11,7 +11,7 @@
 // il n'est ni stocké ni loggé côté client.
 
 const API_BASE = 'https://connect-api.jematech.fr';
-const CONNECT_LOGIN_URL = `${API_BASE}/v1/connect/portal-login`;
+const CONNECT_LOGIN_URL = `${API_BASE}/v1/connect/login`;
 
 export interface ConnectLoginResult {
   accessToken?: string;
