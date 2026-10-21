@@ -35,4 +35,10 @@ export function applyTheme(theme: ResolvedTheme): void {
   const root = document.documentElement;
   root.classList.toggle('dark', theme === 'dark');
   root.style.colorScheme = theme;
+
+  // Keep the PWA/browser chrome in sync with the active theme.
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  if (themeColor) {
+    themeColor.setAttribute('content', theme === 'dark' ? '#0A0A0A' : '#f7f7fa');
+  }
 }
