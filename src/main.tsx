@@ -6,13 +6,16 @@ import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App.tsx'
 import { I18nProvider } from './i18n'
+import { ThemeProvider } from './theme'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <I18nProvider>
-      <App />
-    </I18nProvider>
+    <ThemeProvider>
+      <I18nProvider>
+        <App />
+      </I18nProvider>
+    </ThemeProvider>
   </React.StrictMode>,
 )
 

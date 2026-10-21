@@ -14,6 +14,10 @@ export const translations: { en: Record<string, string>; fr: Record<string, stri
     showPanel: 'Show panel',
     hidePanel: 'Hide panel',
     language: 'Language',
+    theme: 'Theme',
+    themeSystem: 'System',
+    themeLight: 'Light',
+    themeDark: 'Dark',
     developedBy: 'Developed by',
     footerSuffix: '© 2025 • Open Source & Free',
 
@@ -174,6 +178,10 @@ export const translations: { en: Record<string, string>; fr: Record<string, stri
     showPanel: 'Afficher le panneau',
     hidePanel: 'Masquer le panneau',
     language: 'Langue',
+    theme: 'Thème',
+    themeSystem: 'Système',
+    themeLight: 'Clair',
+    themeDark: 'Sombre',
     developedBy: 'Développé par',
     footerSuffix: '© 2025 • Open Source & Libre',
 

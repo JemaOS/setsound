@@ -11,14 +11,56 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #0A0A0A;
+  color-scheme: light;
+  color: #18181b;
+  background-color: #f7f7fa;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Light theme semantic tokens */
+  --ss-bg-page: #f7f7fa;
+  --ss-bg-surface: #ffffff;
+  --ss-bg-elevated: #f4f4f5;
+  --ss-bg-hover: #e4e4e7;
+  --ss-bg-pressed: #d4d4d8;
+  --ss-text-primary: #18181b;
+  --ss-text-secondary: #3f3f46;
+  --ss-text-muted: #71717a;
+  --ss-text-subtle: #a1a1aa;
+  --ss-border: #e4e4e7;
+  --ss-border-strong: #d4d4d8;
+  --ss-scroll-track: #f4f4f5;
+  --ss-scroll-thumb: #d4d4d8;
+  --ss-toast-bg: #ffffff;
+  --ss-toast-text: #18181b;
+  --ss-glass-bg: rgba(255, 255, 255, 0.85);
+}
+
+.dark {
+  color-scheme: dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #0A0A0A;
+
+  /* Dark theme: exact previous values */
+  --ss-bg-page: #0A0A0A;
+  --ss-bg-surface: #141414;
+  --ss-bg-elevated: #272727;
+  --ss-bg-hover: #3A3A3A;
+  --ss-bg-pressed: #525252;
+  --ss-text-primary: #E4E4E7;
+  --ss-text-secondary: #D4D4D4;
+  --ss-text-muted: #A3A3A3;
+  --ss-text-subtle: #737373;
+  --ss-border: #272727;
+  --ss-border-strong: #3A3A3A;
+  --ss-scroll-track: #141414;
+  --ss-scroll-thumb: #3A3A3A;
+  --ss-toast-bg: #272727;
+  --ss-toast-text: #E4E4E7;
+  --ss-glass-bg: rgba(20, 20, 20, 0.8);
 }
 
 * {
@@ -57,11 +99,11 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #141414;
+  background: var(--ss-scroll-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3A3A3A;
+  background: var(--ss-scroll-thumb);
   border-radius: 4px;
 }
 
@@ -98,7 +140,7 @@ html {
 
 /* Custom utilities */
 .glass-effect {
-  background: rgba(20, 20, 20, 0.8);
+  background: var(--ss-glass-bg);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -136,8 +178,170 @@ html {
 }
 
 .track-item:hover {
-  background-color: #3A3A3A;
+  background-color: var(--ss-bg-hover);
   transform: translateX(4px);
+}
+
+/* -------------------------------------------------------------------------
+ * Light-theme compatibility layer
+ * Legacy dark-only utilities are remapped to the light semantic tokens.
+ * Scoped to html:not(.dark), so dark mode keeps its exact original colors.
+ * Purple accents, red/green states and waveform canvases are never remapped.
+ * ---------------------------------------------------------------------- */
+
+html:not(.dark) .bg-neutral-950 {
+  background-color: var(--ss-bg-page);
+}
+
+html:not(.dark) .bg-neutral-900 {
+  background-color: var(--ss-bg-surface);
+}
+
+html:not(.dark) .bg-neutral-800 {
+  background-color: var(--ss-bg-elevated);
+}
+
+html:not(.dark) .bg-neutral-700 {
+  background-color: var(--ss-bg-hover);
+}
+
+html:not(.dark) .bg-neutral-600 {
+  background-color: var(--ss-bg-pressed);
+}
+
+html:not(.dark) .bg-\[\#0A0A0A\] {
+  background-color: var(--ss-bg-page);
+}
+
+html:not(.dark) .bg-\[\#141414\] {
+  background-color: var(--ss-bg-surface);
+}
+
+html:not(.dark) .bg-\[\#272727\] {
+  background-color: var(--ss-bg-elevated);
+}
+
+/* Secondary buttons share the surface color with cards; keep them visible. */
+html:not(.dark) button.bg-neutral-900,
+html:not(.dark) a.bg-neutral-900 {
+  box-shadow: inset 0 0 0 1px var(--ss-border);
+}
+
+html:not(.dark) .bg-neutral-800\/50 {
+  background-color: rgb(244 244 245 / 0.65);
+}
+
+html:not(.dark) .bg-neutral-800\/80 {
+  background-color: rgb(244 244 245 / 0.92);
+}
+
+html:not(.dark) .bg-neutral-700\/70 {
+  background-color: rgb(228 228 231 / 0.7);
+}
+
+html:not(.dark) .bg-neutral-700\/90 {
+  background-color: rgb(228 228 231 / 0.92);
+}
+
+html:not(.dark) .hover\:bg-neutral-900:hover {
+  background-color: var(--ss-bg-surface);
+}
+
+html:not(.dark) .hover\:bg-neutral-800:hover {
+  background-color: var(--ss-bg-elevated);
+}
+
+html:not(.dark) .hover\:bg-neutral-700:hover {
+  background-color: var(--ss-bg-hover);
+}
+
+html:not(.dark) .hover\:bg-neutral-700\/70:hover {
+  background-color: rgb(228 228 231 / 0.7);
+}
+
+html:not(.dark) .hover\:bg-neutral-700\/90:hover {
+  background-color: rgb(228 228 231 / 0.92);
+}
+
+html:not(.dark) .active\:bg-neutral-700:active {
+  background-color: var(--ss-bg-hover);
+}
+
+html:not(.dark) .active\:bg-neutral-600:active {
+  background-color: var(--ss-bg-pressed);
+}
+
+html:not(.dark) .disabled\:bg-neutral-800:disabled {
+  background-color: var(--ss-bg-elevated);
+}
+
+/* Segment overlays sit on the (intentionally dark) waveform canvas. */
+html:not(.dark) .bg-neutral-800.bg-opacity-60 {
+  background-color: rgb(39 39 39 / 0.6);
+}
+
+html:not(.dark) .bg-neutral-800.bg-opacity-40 {
+  background-color: rgb(39 39 39 / 0.4);
+}
+
+html:not(.dark) .text-neutral-100 {
+  color: var(--ss-text-primary);
+}
+
+html:not(.dark) .text-neutral-200 {
+  color: #27272a;
+}
+
+html:not(.dark) .text-neutral-300 {
+  color: var(--ss-text-secondary);
+}
+
+html:not(.dark) .text-neutral-400 {
+  color: var(--ss-text-muted);
+}
+
+html:not(.dark) .text-neutral-500 {
+  color: var(--ss-text-muted);
+}
+
+html:not(.dark) .hover\:text-neutral-100:hover {
+  color: var(--ss-text-primary);
+}
+
+html:not(.dark) .disabled\:text-neutral-500:disabled {
+  color: var(--ss-text-subtle);
+}
+
+html:not(.dark) .border-neutral-900 {
+  border-color: var(--ss-bg-elevated);
+}
+
+html:not(.dark) .border-neutral-800 {
+  border-color: var(--ss-border);
+}
+
+html:not(.dark) .border-neutral-700 {
+  border-color: var(--ss-border-strong);
+}
+
+html:not(.dark) .border-neutral-600 {
+  border-color: var(--ss-border-strong);
+}
+
+html:not(.dark) .border-neutral-500 {
+  border-color: var(--ss-text-subtle);
+}
+
+html:not(.dark) .border-neutral-800\/50 {
+  border-color: rgb(228 228 231 / 0.6);
+}
+
+html:not(.dark) .hover\:border-neutral-500:hover {
+  border-color: var(--ss-text-subtle);
+}
+
+html:not(.dark) .divide-neutral-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--ss-border);
 }
 
 /* Marker styles */
@@ -189,7 +393,7 @@ html {
 
 /* Loading spinner */
 .spinner {
-  border: 3px solid #272727;
+  border: 3px solid var(--ss-border);
   border-top: 3px solid #8286ef;
   border-radius: 50%;
   width: 40px;
@@ -204,8 +408,8 @@ html {
   right: 24px;
   padding: 16px 24px;
   border-radius: 8px;
-  background-color: #272727;
-  color: #E4E4E7;
+  background-color: var(--ss-toast-bg);
+  color: var(--ss-toast-text);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 1000;
   animation: slideIn 0.3s ease-out;

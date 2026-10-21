@@ -4,6 +4,7 @@
 import { ToolType } from '@/types';
 import { useI18n } from '@/i18n';
 import { LanguageSelector } from '@/components/LanguageSelector';
+import { ThemeSwitcher } from '@/theme';
 
 interface SidebarProps {
   currentTool: ToolType;
@@ -93,15 +94,14 @@ export const Sidebar = ({ currentTool, onToolChange, isOpen, onToggle }: Sidebar
     `}>
       <div className="p-4 sm:p-5 md:p-6 border-b border-neutral-800">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" className="sm:w-8 sm:h-8">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" className="flex-shrink-0 sm:w-8 sm:h-8">
               <rect width="32" height="32" rx="8" fill="#8286ef"/>
               <circle cx="16" cy="16" r="10" fill="white" fillOpacity="0.15"/>
               <path d="M14 10v12l8-6z" fill="white"/>
               <circle cx="14" cy="16" r="1.5" fill="white"/>
             </svg>
-            <span className="text-lg sm:text-xl font-semibold text-primary-500">setsound</span>
-            <LanguageSelector className="ml-0.5 sm:ml-1" />
+            <span className="text-lg sm:text-xl font-semibold text-primary-500 truncate">setsound</span>
           </div>
           
           {/* Toggle button - Touch-friendly - Always visible */}
@@ -114,6 +114,11 @@ export const Sidebar = ({ currentTool, onToolChange, isOpen, onToggle }: Sidebar
               <path d="M10 3L5 8l5 5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <LanguageSelector />
+          <ThemeSwitcher />
         </div>
       </div>
       

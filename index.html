@@ -13,6 +13,30 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Setsound" />
 
+    <script>
+      (function () {
+        var mode = 'system';
+        try {
+          var stored = window.localStorage.getItem('setsound-theme');
+          if (stored === 'light' || stored === 'dark' || stored === 'system') {
+            mode = stored;
+          }
+        } catch (error) {
+          // localStorage unavailable: fall back to the system preference.
+        }
+        var prefersDark = typeof window.matchMedia === 'function' &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = mode === 'dark' || (mode === 'system' && prefersDark);
+        var root = document.documentElement;
+        root.classList.toggle('dark', isDark);
+        root.style.colorScheme = isDark ? 'dark' : 'light';
+      })();
+    </script>
+    <style>
+      html { background-color: #f7f7fa; color-scheme: light; }
+      html.dark { background-color: #0A0A0A; color-scheme: dark; }
+    </style>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
