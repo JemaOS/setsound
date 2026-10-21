@@ -975,8 +975,8 @@ function LoadingScreen() {
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: '100vh',
-      background: '#0b0f1a',
-      color: '#f8fafc',
+      background: 'var(--ss-bg-page, #0b0f1a)',
+      color: 'var(--ss-text-primary, #f8fafc)',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
       <div style={{ fontSize: '1.2rem' }}>{t('loading')}</div>
