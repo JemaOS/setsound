@@ -19,6 +19,10 @@
 
 [Features](#-features) · [Screenshots](#-screenshots) · [Getting started](#-getting-started) · [Tech stack](#-tech-stack) · [License](#-license)
 
+<br>
+
+<sub>**Keywords:** audio cutter · audio joiner · audio trimmer · BPM detector · tempo finder · beat detector · audio recorder · audio converter · MP3 · WAV · FLAC · OGG · audio compressor · waveform editor · browser audio editor · WebAssembly FFmpeg · offline PWA · no upload · private audio tools · React · TypeScript</sub>
+
 </div>
 
 ![SetSound — Audio Cutter](screenshots/main.png)
@@ -49,9 +53,25 @@ Plus:
 
 ## 📸 Screenshots
 
+### Interface
+
 | Light | Dark |
 | :---: | :---: |
 | <img src="screenshots/main.png" alt="SetSound — light" /> | <img src="screenshots/main-dark.png" alt="SetSound — dark" /> |
+
+### Tools
+
+| ✂️ Cutter | 🔗 Joiner |
+| :---: | :---: |
+| <img src="screenshots/main.png" alt="SetSound audio cutter — trim on a waveform" /> | <img src="screenshots/joiner.png" alt="SetSound audio joiner — merge several tracks" /> |
+
+| 🥁 BPM Detector | 🎙️ Recorder |
+| :---: | :---: |
+| <img src="screenshots/bpm.png" alt="SetSound BPM detector — find the tempo" /> | <img src="screenshots/recorder.png" alt="SetSound recorder — record from your microphone" /> |
+
+| 🔄 Converter | 🗜️ Compressor |
+| :---: | :---: |
+| <img src="screenshots/converter.png" alt="SetSound audio converter — MP3, WAV, FLAC" /> | <img src="screenshots/compressor.png" alt="SetSound audio compressor — shrink file size" /> |
 
 ---
 
