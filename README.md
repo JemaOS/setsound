@@ -49,9 +49,9 @@ Plus:
 
 ## 📸 Screenshots
 
-<p align="center">
-  <img src="screenshots/main.png" width="820" alt="SetSound audio cutter" />
-</p>
+| Light | Dark |
+| :---: | :---: |
+| <img src="screenshots/main.png" alt="SetSound — light" /> | <img src="screenshots/main-dark.png" alt="SetSound — dark" /> |
 
 ---
 
