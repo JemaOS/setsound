@@ -169,6 +169,15 @@ export const translations: { en: Record<string, string>; fr: Record<string, stri
     loading: 'Loading…',
     reconnectingTitle: 'Reconnecting…',
     verifyingSession: 'Verifying your JemaOS session. You will be redirected automatically.',
+    loginAccountLabel: 'Jema account',
+    loginAccountPlaceholder: 'name@example.com',
+    loginPasswordLabel: 'Password',
+    loginSubmit: 'Sign in with Jema',
+    loginSubmitting: 'Signing in…',
+    loginErrorCaptcha: 'Anti-robot verification required. Please try again.',
+    loginErrorCaptchaTurnstile:
+      'Anti-robot verification required. Complete the CAPTCHA and try again.',
+    loginErrorGeneric: 'Sign-in failed. Please check your Jema credentials.',
   },
 
   fr: {
@@ -333,5 +342,14 @@ export const translations: { en: Record<string, string>; fr: Record<string, stri
     loading: 'Chargement…',
     reconnectingTitle: 'Reconnexion en cours…',
     verifyingSession: 'Vérification de votre session JemaOS. Vous allez être redirigé automatiquement.',
+    loginAccountLabel: 'Compte Jema',
+    loginAccountPlaceholder: 'nom@exemple.com',
+    loginPasswordLabel: 'Mot de passe',
+    loginSubmit: 'Se connecter avec Jema',
+    loginSubmitting: 'Connexion…',
+    loginErrorCaptcha: 'Vérification anti-robot requise. Réessayez.',
+    loginErrorCaptchaTurnstile:
+      'Vérification anti-robot requise. Validez le CAPTCHA et réessayez.',
+    loginErrorGeneric: 'Connexion impossible. Vérifiez vos identifiants Jema.',
   },
 };
