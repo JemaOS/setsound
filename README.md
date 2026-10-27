@@ -59,6 +59,12 @@ Plus:
 | :---: | :---: |
 | <img src="screenshots/main.png" alt="SetSound — light" /> | <img src="screenshots/main-dark.png" alt="SetSound — dark" /> |
 
+### 📱 Mobile
+
+| Dark | Light |
+| :---: | :---: |
+| <img src="screenshots/mobile-dark.png" alt="SetSound — mobile, dark" width="300" /> | <img src="screenshots/mobile-light.png" alt="SetSound — mobile, light" width="300" /> |
+
 ### Tools
 
 | ✂️ Cutter | 🔗 Joiner |
