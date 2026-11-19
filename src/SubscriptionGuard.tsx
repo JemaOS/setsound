@@ -120,7 +120,7 @@ function isOsManagedSession(): boolean {
 async function waitForManagedTokenRefresh(
   staleToken: string
 ): Promise<string | null> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 15; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, 4000));
     const token = await getAccessToken(staleToken);
     if (token && token !== staleToken) {
